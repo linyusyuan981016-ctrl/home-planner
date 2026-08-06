@@ -43,3 +43,8 @@ streamlit run app.py
 
 ## Testing Feature 1
 ...
+## Output
+
+### Feature one
+
+![Feature one](screenshot/Feature1.png)
