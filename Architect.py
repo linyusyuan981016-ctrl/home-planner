@@ -187,17 +187,19 @@ def main() -> None:
             col3, col4 = st.columns(2)
 
             with col3:
-                furniture_x = st.number_input(
-                    "X position (cm)",
+                furniture_x = st.slider(
+                    "Move left /right",
                     min_value=0,
-                    value=20
+                    max_value = max(0,int(selected_room.width - furniture_width)),
+                    value=0
                 )
 
             with col4:
                 furniture_y = st.number_input(
-                    "Y position (cm)",
+                    "Move up /down",
                     min_value=0,
-                    value=20
+                    max_value = max(0,int(selected_room.length - furniture_depth)),
+                    value=0
                 )
 
             add_furniture = st.form_submit_button("Add furniture")
@@ -237,6 +239,7 @@ def main() -> None:
             furniture = st.session_state.furniture,
             display_unit = display_unit)
         st.pyplot(fig, use_container_width=True)
+
 
 
 
