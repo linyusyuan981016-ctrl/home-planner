@@ -1,4 +1,4 @@
-# Home Planner
+# Home Planner - project overveiw 
 
 The simplest home planning platform for everyday homeowners — not architects or interior designers.
 
@@ -48,3 +48,35 @@ streamlit run app.py
 ### Feature one
 
 ![Feature one](screenshot/Feature1.png)
+
+
+# Features : 
+
+create room by entering 
+    room name 
+    width, length, height 
+generate a dimension-accurate 2D floor plan 
+    Add furniture name 
+    width, depth, x position, y position 
+automatically scale furniture according to the size of the room 
+check whether furniture fits inside the room 
+support multiple measurement units 
+    cm,m,inch,feet 
+
+display room dimentsions using the selected unit 
+
+# Installation 
+    python
+    streamlit 
+    matplotlib
+    python unittest 
+
+# Install dependances 
+    pip install streamlit matplotlib 
+
+# run 
+    streamlit run Architect.py 
+
+# Clon 
+    git clone Githubrepository 
+    cd home-planner 
