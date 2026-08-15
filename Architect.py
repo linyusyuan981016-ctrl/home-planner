@@ -14,7 +14,17 @@ DEFAULT_WIDTH = 400
 DEFAULT_LENGTH = 300
 DEFAULT_HEIGHT = 250
 
+conversion = {
+    "cm": 1,
+    "m": 100,
+    "inch": 2.54,
+    "feet": 30.48
+}
 
+display_unit = st.selectbox(
+    "Display unit",
+    ["inch","cm","m","feet"]
+)
 def _init_state() -> None:
     if "home" not in st.session_state:
         st.session_state.home = Home(name="My Home")
@@ -100,6 +110,19 @@ def _render_room_form(home: Home) -> None:
             st.session_state.selected_room_id = home.rooms[0].id if home.rooms else None
             st.rerun()
 
+    unit = st.selectbox(
+        "Unit",
+        ["cm","m","inch","feet"]
+    )
+    if unit == "cm":
+        width_cm = width
+    elif unit == "m":
+        width_cm = width * 100
+    elif unit == "inch":
+        width_cm = width * 2.54
+    elif unit == "feet":
+        width_cm = width * 30.48
+
 
 def _render_room_details(room: Room | None) -> None:
     if not room:
@@ -124,6 +147,14 @@ def main() -> None:
     left, right = st.columns([1, 2], gap="large")
 
     with left:
+        furniture_name = st.text_input("Furniture name", value="Sofa")
+        furniture_unit = st.selectbox(
+                        "Furniture unit",
+                        ["cm","m","inch","feet"]
+        )
+
+        col1, col2 = st.columns(2)
+
         _render_room_form(home)
         selected_room = _find_room(home, st.session_state.selected_room_id)
         _render_room_details(selected_room)
@@ -131,9 +162,13 @@ def main() -> None:
         st.header("Furniture")
 
         with st.form("furniture_form"):
-            furniture_name = st.text_input("Furniture name", value="Sofa")
-
+            furniture_name = st.text_input(
+                "Furniture name",
+                value = "Sofa"
+            )
             col1, col2 = st.columns(2)
+
+            
 
             with col1:
                 furniture_width = st.number_input(
@@ -168,6 +203,13 @@ def main() -> None:
             add_furniture = st.form_submit_button("Add furniture")
 
         if add_furniture:
+            factor = conversion[furniture_unit]
+            
+            furniture_width_cm = furniture_width * factor
+            furniture_depth_cm = furniture_depth * factor
+            furniture_x_cm = furniture_x * factor 
+            furniture_y_cm = furniture_y * factor
+
             st.session_state.furniture.append({
                 "name": furniture_name,
                 "width": furniture_width,
@@ -179,7 +221,11 @@ def main() -> None:
 
     with right:
         st.subheader("2D floor plan")
-        fig = render_floor_plan(home, selected_room_id=st.session_state.selected_room_id, furniture = st.session_state.furniture)
+        fig = render_floor_plan(
+            home, 
+            selected_room_id=st.session_state.selected_room_id, 
+            furniture = st.session_state.furniture,
+            display_unit = display_unit)
         st.pyplot(fig, use_container_width=True)
 
 
