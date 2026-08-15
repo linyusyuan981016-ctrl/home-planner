@@ -204,20 +204,30 @@ def main() -> None:
 
         if add_furniture:
             factor = conversion[furniture_unit]
-            
+
             furniture_width_cm = furniture_width * factor
             furniture_depth_cm = furniture_depth * factor
-            furniture_x_cm = furniture_x * factor 
+            furniture_x_cm = furniture_x * factor
             furniture_y_cm = furniture_y * factor
 
-            st.session_state.furniture.append({
-                "name": furniture_name,
-                "width": furniture_width,
-                "depth": furniture_depth,
-                "x": furniture_x,
-                "y": furniture_y,
-            })
-            st.rerun()
+            if (
+                furniture_x_cm + furniture_width_cm <= selected_room.width
+                and furniture_y_cm + furniture_depth_cm <= selected_room.length
+            ):
+                st.success("Furniture fits in the room!")
+
+                st.session_state.furniture.append({
+                    "name": furniture_name,
+                    "width": furniture_width_cm,
+                    "depth": furniture_depth_cm,
+                    "x": furniture_x_cm,
+                    "y": furniture_y_cm,
+                })
+
+            else:
+                st.error("Furniture does not fit in the room!")
+
+            
 
     with right:
         st.subheader("2D floor plan")
