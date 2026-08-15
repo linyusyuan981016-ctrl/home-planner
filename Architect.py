@@ -195,7 +195,7 @@ def main() -> None:
                 )
 
             with col4:
-                furniture_y = st.number_input(
+                furniture_y = st.slider(
                     "Move up /down",
                     min_value=0,
                     max_value = max(0,int(selected_room.length - furniture_depth)),
