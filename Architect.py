@@ -161,73 +161,74 @@ def main() -> None:
 
         st.header("Furniture")
 
-        with st.form("furniture_form"):
-            furniture_name = st.text_input(
-                "Furniture name",
-                value = "Sofa"
-            )
-            col1, col2 = st.columns(2)
-
-            
-
-            with col1:
-                furniture_width = st.number_input(
-                    "Furniture width (cm)",
-                    min_value=1,
-                    value=200
+        if not selected_room:
+            st.caption("Add a room first, then you can place furniture.")
+        else:
+            with st.form("furniture_form"):
+                furniture_name = st.text_input(
+                    "Furniture name",
+                    value = "Sofa"
                 )
+                col1, col2 = st.columns(2)
 
-            with col2:
-                furniture_depth = st.number_input(
-                    "Furniture depth (cm)",
-                    min_value=1,
-                    value=90
-                )
+                with col1:
+                    furniture_width = st.number_input(
+                        "Furniture width (cm)",
+                        min_value=1,
+                        value=200
+                    )
 
-            col3, col4 = st.columns(2)
+                with col2:
+                    furniture_depth = st.number_input(
+                        "Furniture depth (cm)",
+                        min_value=1,
+                        value=90
+                    )
 
-            with col3:
-                furniture_x = st.slider(
-                    "Move left /right",
-                    min_value=0,
-                    max_value = max(0,int(selected_room.width - furniture_width)),
-                    value=0
-                )
+                col3, col4 = st.columns(2)
 
-            with col4:
-                furniture_y = st.slider(
-                    "Move up /down",
-                    min_value=0,
-                    max_value = max(0,int(selected_room.length - furniture_depth)),
-                    value=0
-                )
+                with col3:
+                    furniture_x = st.slider(
+                        "Move left /right",
+                        min_value=0,
+                        max_value=max(0, int(selected_room.width - furniture_width)),
+                        value=0
+                    )
 
-            add_furniture = st.form_submit_button("Add furniture")
+                with col4:
+                    furniture_y = st.slider(
+                        "Move up /down",
+                        min_value=0,
+                        max_value=max(0, int(selected_room.length - furniture_depth)),
+                        value=0
+                    )
 
-        if add_furniture:
-            factor = conversion[furniture_unit]
+                add_furniture = st.form_submit_button("Add furniture")
 
-            furniture_width_cm = furniture_width * factor
-            furniture_depth_cm = furniture_depth * factor
-            furniture_x_cm = furniture_x * factor
-            furniture_y_cm = furniture_y * factor
+            if add_furniture:
+                factor = conversion[furniture_unit]
 
-            if (
-                furniture_x_cm + furniture_width_cm <= selected_room.width
-                and furniture_y_cm + furniture_depth_cm <= selected_room.length
-            ):
-                st.success("Furniture fits in the room!")
+                furniture_width_cm = furniture_width * factor
+                furniture_depth_cm = furniture_depth * factor
+                furniture_x_cm = furniture_x * factor
+                furniture_y_cm = furniture_y * factor
 
-                st.session_state.furniture.append({
-                    "name": furniture_name,
-                    "width": furniture_width_cm,
-                    "depth": furniture_depth_cm,
-                    "x": furniture_x_cm,
-                    "y": furniture_y_cm,
-                })
+                if (
+                    furniture_x_cm + furniture_width_cm <= selected_room.width
+                    and furniture_y_cm + furniture_depth_cm <= selected_room.length
+                ):
+                    st.success("Furniture fits in the room!")
 
-            else:
-                st.error("Furniture does not fit in the room!")
+                    st.session_state.furniture.append({
+                        "name": furniture_name,
+                        "width": furniture_width_cm,
+                        "depth": furniture_depth_cm,
+                        "x": furniture_x_cm,
+                        "y": furniture_y_cm,
+                    })
+
+                else:
+                    st.error("Furniture does not fit in the room!")
 
             
 
