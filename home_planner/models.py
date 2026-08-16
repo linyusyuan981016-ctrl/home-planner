@@ -1,4 +1,4 @@
-"""Data model for Feature 1: Dimensions → Map."""
+"""Domain models for Feature 1: Dimensions → Map."""
 
 from __future__ import annotations
 
@@ -42,6 +42,18 @@ class Wall:
 
 
 @dataclass
+class Furniture:
+    """A rectangular furniture block stored in centimeters."""
+
+    name: str
+    width: float
+    depth: float
+    x: float
+    y: float
+    id: str = field(default_factory=_new_id)
+
+
+@dataclass
 class Room:
     name: str
     width: float   # cm, X axis
@@ -56,12 +68,16 @@ class Room:
     def walls(self) -> list[Wall]:
         """Four walls derived from room dimensions."""
         x, y = self.position
-        w, l = self.width, self.length
-        corners = [(x, y), (x + w, y), (x + w, y + l), (x, y + l)]
+        w, length = self.width, self.length
+        corners = [(x, y), (x + w, y), (x + w, y + length), (x, y + length)]
         return [
             Wall(_new_id(), self.id, corners[i], corners[(i + 1) % 4])
             for i in range(4)
         ]
+
+    @property
+    def floor_area_m2(self) -> float:
+        return self.width * self.length / 10_000
 
 
 @dataclass

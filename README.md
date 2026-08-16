@@ -1,17 +1,52 @@
-# Home Planner - project overveiw 
+# Home Planner
 
 The simplest home planning platform for everyday homeowners — not architects or interior designers.
 
 Help people answer practical questions before they buy furniture or appliances: *Will this fit? Is there enough walking space? Can the door still open?*
 
-## Start here
+## Quick start
+
+```bash
+git clone <repository-url>
+cd home-planner
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Open the URL shown in the terminal (default: http://localhost:8501).
+
+## Project structure
+
+```
+home-planner/
+├── app.py                  # Streamlit entry point
+├── requirements.txt
+├── docs/                   # Product and feature specs
+├── home_planner/           # Application package
+│   ├── constants.py        # Shared defaults
+│   ├── models.py           # Domain models (Home, Room, Furniture)
+│   ├── units.py            # Unit conversion (internal storage: cm)
+│   ├── services/           # Business logic
+│   ├── rendering/          # Floor plan visualization
+│   └── ui/                 # Streamlit UI components
+└── tests/
+```
+
+## Features (current)
+
+- Create rooms with name, width, length, and height
+- Generate a dimension-accurate 2D floor plan
+- Add furniture blocks and check whether they fit
+- Support display units: cm, m, inch, feet
+
+## Documentation
 
 | Doc | Purpose |
 |-----|---------|
-| [AGENTS.md](./AGENTS.md) | AI agent onboarding — read this first |
+| [AGENTS.md](./AGENTS.md) | AI agent onboarding |
 | [docs/PRODUCT.md](./docs/PRODUCT.md) | Vision, philosophy, target users |
 | [docs/FEATURES.md](./docs/FEATURES.md) | Feature breakdown and build order |
-| [docs/features/01-dimensions-to-map.md](./docs/features/01-dimensions-to-map.md) | **Feature 1** — current focus |
+| [docs/features/01-dimensions-to-map.md](./docs/features/01-dimensions-to-map.md) | Feature 1 spec |
 | [docs/GLOSSARY.md](./docs/GLOSSARY.md) | Shared terminology |
 
 ## Build order
@@ -25,58 +60,12 @@ Help people answer practical questions before they buy furniture or appliances: 
 6. Room Organization
 ```
 
+## Testing
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## Core principle
 
 **Simple over professional.** Every feature reduces complexity instead of adding it. Dimensions matter; aesthetics do not.
-
-
-# Setup
-
-## Clone repository
-git clone ...
-
-## Install dependencies
-pip install -r requirements.txt
-
-## Run
-streamlit run app.py
-
-## Testing Feature 1
-...
-## Output
-
-### Feature one
-
-![Feature one](screenshot/Feature1.png)
-
-
-# Features : 
-
-create room by entering 
-    room name 
-    width, length, height 
-generate a dimension-accurate 2D floor plan 
-    Add furniture name 
-    width, depth, x position, y position 
-automatically scale furniture according to the size of the room 
-check whether furniture fits inside the room 
-support multiple measurement units 
-    cm,m,inch,feet 
-
-display room dimentsions using the selected unit 
-
-# Installation 
-    python
-    streamlit 
-    matplotlib
-    python unittest 
-
-# Install dependances 
-    pip install streamlit matplotlib 
-
-# run 
-    streamlit run Architect.py 
-
-# Clon 
-    git clone Githubrepository 
-    cd home-planner 
