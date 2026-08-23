@@ -310,10 +310,10 @@ def main() -> None:
                 elif furniture_y_cm + furniture_depth_cm > selected_room.length:
                     st.error("Furniture goes outside the bottom side of the room.")
                 else:
-                    st.session_state.furniture = [
-                        item for item in st.session_state.furniture 
-                        if item["name"] != furniture_name
-                    ]
+                    # st.session_state.furniture = [
+                    #     item for item in st.session_state.furniture 
+                    #     if item["name"] != furniture_name
+                    # ]
                     st.session_state.furniture.append({
                         "id" : str(uuid.uuid4()),
                         "name": furniture_name,
@@ -329,13 +329,20 @@ def main() -> None:
 
     with right:
         st.subheader("2D floor plan")
-        fig = render_floor_plan(
-            home, 
-            selected_room_id=st.session_state.selected_room_id, 
-            furniture = st.session_state.furniture,
-            display_unit = display_unit)
-        st.pyplot(fig, use_container_width=True)
 
+
+        updated_furniture= render_floor_plan(
+            home,
+            selected_room_id=st.session_state.selected_room_id,
+            furniture=st.session_state.furniture,
+            display_unit=display_unit
+        )
+
+        if updated_furniture is not None:
+            st.session_state.furniture = updated_furniture
+
+        # if updated_furniture is not None:
+        #     st.session_state.furniture = updated_furniture
 
 
 
