@@ -341,7 +341,7 @@ def main() -> None:
         if updated_furniture is not None:
             st.session_state.furniture = updated_furniture
 
-        # if updated_furniture is not None:
+        # if updated_furniture is not None
         #     st.session_state.furniture = updated_furniture
 
 

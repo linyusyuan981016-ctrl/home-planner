@@ -33,4 +33,4 @@ def render_floor_plan(
         furniture=furniture,
     )
 
-    return updated_furniture
+    return updated_furniture 
