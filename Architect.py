@@ -60,22 +60,33 @@ def _render_sidebar(home: Home) -> None:
         st.rerun()
 
     if home.rooms:
-        room_names = {r.name: r.id for r in home.rooms}
-        ids = list(room_names.values())
-        current_id = st.session_state.selected_room_id
-        if current_id not in ids:
-            current_id = ids[0]
-        selected_name = st.sidebar.radio(
-            "Select room",
-            options=list(room_names.keys()),
-            index=ids.index(current_id),
-        )
-        selected_id = room_names[selected_name]
-        if selected_id != st.session_state.selected_room_id:
-            st.session_state.adding_room = False
-            st.session_state.selected_room_id = selected_id
-            st.rerun()
-        st.session_state.selected_room_id = room_names[selected_name]
+
+        if st.session_state.adding_room:
+            st.sidebar.caption("Adding a new room...")
+
+        else:
+            room_ids = [r.id for r in home.rooms]
+
+            current_id = st.session_state.selected_room_id
+
+            if current_id not in room_ids:
+                current_id = room_ids[0]
+
+            selected_id = st.sidebar.radio(
+                "Select room",
+                options=room_ids,
+                index=room_ids.index(current_id),
+                format_func=lambda room_id: next(
+                    r.name for r in home.rooms
+                    if r.id == room_id
+                ),
+            )
+
+            if selected_id != st.session_state.selected_room_id:
+                st.session_state.selected_room_id = selected_id
+                st.session_state.adding_room = False
+                st.rerun()
+
     else:
         st.sidebar.caption("No rooms yet — add one below.")
 
@@ -106,7 +117,7 @@ def _render_room_form(home: Home) -> None:
         ):
             st.session_state.furniture = [
                 item for item in st.session_state.furniture 
-                if item["room_id"] != selected.id
+                if item.get("room_id") != selected.id
             ]
             home.rooms = [
                 r for r in home.rooms 
@@ -174,37 +185,17 @@ def _render_room_form(home: Home) -> None:
                 height=height_cm,
             )
             if home.rooms:
-                room_names = {r.name: r.id for r in home.rooms}
-                ids = list(room_names.values())
-                if not st.session_state.selected_room:
-                    current_id = st.session_state.selected_room_id
-                    if current_id not in ids:
-                        current_id = ids[0]
-                    selected_name = st.sidebar.radio(
-                        "Select room",
-                        options=list(room_names.keys()),
-                        index=ids.index(current_id),
-                    )
-                    selected_id = room_names[selected_name]
-                    if selected_id != st.session_state.selected_room_id:
-                        st.session_state.adding_room = False
-                        st.session_state.selected_room_id = selected_id
-                        st.rerun()
-                    else:
-                        st.sidebar.caption ("Adding a new room...")
                 last = home.rooms[-1]
-                room.position = (last.position[0] + last.width + 50, last.position[1])
+                room.position = (
+                    last.position[0] + last.width + 50,
+                    last.position[1]
+                )
             home.rooms.append(room)
             st.session_state.selected_room_id = room.id
             st.session_state.adding_room = False
             st.success(f"Added **{room.name}**.")
         st.rerun()
 
-    if editing and selected:
-        if st.button("Delete room", type="secondary"):
-            home.rooms = [r for r in home.rooms if r.id != selected.id]
-            st.session_state.selected_room_id = (home.rooms[0].id if home.rooms else None)
-            st.rerun()
 
     # unit = st.selectbox(
     #     "Unit",
@@ -378,6 +369,38 @@ def main() -> None:
                     })
                     st.success("Furniture added successfully!")
                     st.rerun()
+            current_room_furniture = [
+                item for item in st.session_state.furniture
+                if item.get("room_id") == selected_room.id
+            ]
+
+            if current_room_furniture:
+                st.subheader("Furniture in this room")
+
+                for item in current_room_furniture:
+
+                    col_name, col_delete = st.columns([4, 1])
+
+                    with col_name:
+                        st.write(
+                            f"{item['name']} — "
+                            f"{item['width'] / factor:.1f} × "
+                            f"{item['depth'] / factor:.1f} "
+                            f"{display_unit}"
+                        )
+
+                    with col_delete:
+                        if st.button(
+                            "Delete",
+                            key=f"delete_furniture_{item['id']}"
+                        ):
+                            st.session_state.furniture = [
+                                furniture_item
+                                for furniture_item in st.session_state.furniture
+                                if furniture_item["id"] != item["id"]
+                            ]
+
+                            st.rerun()
 
             
 
