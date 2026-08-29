@@ -30,7 +30,9 @@ def render_floor_plan(
     updated_furniture = konva_floor_plan(
         room_width=float(selected_room.width),
         room_length=float(selected_room.length),
+        room_height=float(selected_room.height),
         furniture=furniture,
     )
+
 
     return updated_furniture 

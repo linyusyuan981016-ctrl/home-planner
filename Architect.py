@@ -35,6 +35,8 @@ def _init_state() -> None:
         st.session_state.selected_room_id = None
     if "furniture" not in st.session_state:
         st.session_state.furniture = []
+    if "adding_room" not in st.session_state:
+        st.session_state.adding_room = True
 
 
 def _find_room(home: Home, room_id: str | None) -> Room | None:
@@ -49,6 +51,13 @@ def _render_sidebar(home: Home) -> None:
 
     st.sidebar.divider()
     st.sidebar.header("Rooms")
+    if st.sidebar.button(
+        "+ Add room",
+        key="add_new_room"
+    ):
+        st.session_state.adding_room = True
+        st.session_state.selected_room_id = None
+        st.rerun()
 
     if home.rooms:
         room_names = {r.name: r.id for r in home.rooms}
@@ -61,9 +70,16 @@ def _render_sidebar(home: Home) -> None:
             options=list(room_names.keys()),
             index=ids.index(current_id),
         )
+        selected_id = room_names[selected_name]
+        if selected_id != st.session_state.selected_room_id:
+            st.session_state.adding_room = False
+            st.session_state.selected_room_id = selected_id
+            st.rerun()
         st.session_state.selected_room_id = room_names[selected_name]
     else:
         st.sidebar.caption("No rooms yet — add one below.")
+
+    
 
 
 def _render_room_form(home: Home) -> None:
@@ -79,10 +95,28 @@ def _render_room_form(home: Home) -> None:
         st.session_state.selected_room_id
     )
 
-    editing = selected is not None
+    editing = selected is not None and not st.session_state.adding_room
 
     #Convert stored cm -> selected display unit
     if editing and selected:
+        if st.button(
+            "Delete room", 
+            type = "secondary",
+            key = f"delete_room_{selected.id}"
+        ):
+            st.session_state.furniture = [
+                item for item in st.session_state.furniture 
+                if item["room_id"] != selected.id
+            ]
+            home.rooms = [
+                r for r in home.rooms 
+                if r.id != selected.id
+            ]
+            st.session_state.selected_room_id = (
+                home.rooms[0].id if home.rooms else None
+            )
+            st.session_state.adding_room = not bool(home.rooms)
+            st.rerun()
         default_width = selected.width / factor
         default_length = selected.length / factor
         default_height = selected.height / factor
@@ -140,10 +174,29 @@ def _render_room_form(home: Home) -> None:
                 height=height_cm,
             )
             if home.rooms:
+                room_names = {r.name: r.id for r in home.rooms}
+                ids = list(room_names.values())
+                if not st.session_state.selected_room:
+                    current_id = st.session_state.selected_room_id
+                    if current_id not in ids:
+                        current_id = ids[0]
+                    selected_name = st.sidebar.radio(
+                        "Select room",
+                        options=list(room_names.keys()),
+                        index=ids.index(current_id),
+                    )
+                    selected_id = room_names[selected_name]
+                    if selected_id != st.session_state.selected_room_id:
+                        st.session_state.adding_room = False
+                        st.session_state.selected_room_id = selected_id
+                        st.rerun()
+                    else:
+                        st.sidebar.caption ("Adding a new room...")
                 last = home.rooms[-1]
                 room.position = (last.position[0] + last.width + 50, last.position[1])
             home.rooms.append(room)
             st.session_state.selected_room_id = room.id
+            st.session_state.adding_room = False
             st.success(f"Added **{room.name}**.")
         st.rerun()
 
@@ -175,24 +228,24 @@ def _render_room_details(room: Room | None) -> None:
     height = room.height / factor
     length = room.length / factor
 
-    st.subheader("Selected room")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric(
-        "Width", 
-        f"{width:.2f} {display_unit}"
-    )
-    c2.metric(
-        "Length", 
-        f"{length:.2f} {display_unit}"
-    )
-    c3.metric(
-        "Height", 
-        f"{height:.2f} {display_unit}"
-    )
-    c4.metric(
-        "Floor area", 
-        f"{room.width * room.length / 10_000:.1f} m²"
-    )
+    # st.subheader("Selected room")
+    # c1, c2, c3, c4 = st.columns(4)
+    # c1.metric(
+    #     "Width", 
+    #     f"{width:.2f} {display_unit}"
+    # )
+    # c2.metric(
+    #     "Length", 
+    #     f"{length:.2f} {display_unit}"
+    # )
+    # c3.metric(
+    #     "Height", 
+    #     f"{height:.2f} {display_unit}"
+    # )
+    # c4.metric(
+    #     "Floor area", 
+    #     f"{room.width * room.length / 10_000:.1f} m²"
+    # )
 
 
 def main() -> None:
@@ -316,6 +369,7 @@ def main() -> None:
                     # ]
                     st.session_state.furniture.append({
                         "id" : str(uuid.uuid4()),
+                        "room_id": selected_room.id,
                         "name": furniture_name,
                         "width": furniture_width_cm,
                         "depth": furniture_depth_cm,
@@ -330,16 +384,28 @@ def main() -> None:
     with right:
         st.subheader("2D floor plan")
 
+        room_furniture = [
+            item for item in st.session_state.furniture 
+            if item.get("room_id") == st.session_state.selected_room_id
+        ]
 
         updated_furniture= render_floor_plan(
             home,
             selected_room_id=st.session_state.selected_room_id,
-            furniture=st.session_state.furniture,
+            furniture=room_furniture,
             display_unit=display_unit
         )
 
         if updated_furniture is not None:
-            st.session_state.furniture = updated_furniture
+            updated_by_id = {
+                item["id"]: item 
+                for item in updated_furniture
+            }
+            for i, item in enumerate(st.session_state.furniture):
+                if item["id"] in updated_by_id:
+                    room_id = item["room_id"]
+                    st.session_state.furniture[i] = updated_by_id[item["id"]]
+                    st.session_state.furniture[i]["room_id"] = room_id
 
         # if updated_furniture is not None
         #     st.session_state.furniture = updated_furniture
