@@ -59,7 +59,7 @@ class Room:
     width: float   # cm, X axis
     length: float  # cm, Y axis
     height: float  # cm, Z axis
-    id: str = field(default_factory=_new_id)
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
     position: tuple[float, float] = (0.0, 0.0)
     rotation: float = 0.0
     openings: list[Opening] = field(default_factory=list)

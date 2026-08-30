@@ -47,10 +47,14 @@ def _find_room(home: Home, room_id: str | None) -> Room | None:
 
 def _render_sidebar(home: Home) -> None:
     st.sidebar.header("Home")
-    home.name = st.sidebar.text_input("Home name", value=home.name)
+    home.name = st.sidebar.text_input(
+        "Home name",
+        value=home.name
+    )
 
     st.sidebar.divider()
     st.sidebar.header("Rooms")
+
     if st.sidebar.button(
         "+ Add room",
         key="add_new_room"
@@ -59,36 +63,36 @@ def _render_sidebar(home: Home) -> None:
         st.session_state.selected_room_id = None
         st.rerun()
 
-    if home.rooms:
-
-        if st.session_state.adding_room:
-            st.sidebar.caption("Adding a new room...")
-
-        else:
-            room_ids = [r.id for r in home.rooms]
-
-            current_id = st.session_state.selected_room_id
-
-            if current_id not in room_ids:
-                current_id = room_ids[0]
-
-            selected_id = st.sidebar.radio(
-                "Select room",
-                options=room_ids,
-                index=room_ids.index(current_id),
-                format_func=lambda room_id: next(
-                    r.name for r in home.rooms
-                    if r.id == room_id
-                ),
-            )
-
-            if selected_id != st.session_state.selected_room_id:
-                st.session_state.selected_room_id = selected_id
-                st.session_state.adding_room = False
-                st.rerun()
-
-    else:
+    if not home.rooms:
         st.sidebar.caption("No rooms yet — add one below.")
+        return
+
+    # When adding a room, DON'T automatically select an old room
+    if st.session_state.adding_room:
+        st.sidebar.caption("Adding a new room...")
+        return
+
+    room_ids = [room.id for room in home.rooms]
+
+    current_id = st.session_state.selected_room_id
+
+    if current_id not in room_ids:
+        current_id = room_ids[0]
+        st.session_state.selected_room_id = current_id
+
+    selected_id = st.sidebar.radio(
+        "Select room",
+        options=room_ids,
+        index=room_ids.index(current_id),
+        format_func=lambda room_id: next(
+            room.name
+            for room in home.rooms
+            if room.id == room_id
+        ),
+        key="room_selector"
+    )
+
+    st.session_state.selected_room_id = selected_id
 
     
 
@@ -136,7 +140,13 @@ def _render_room_form(home: Home) -> None:
         default_length = DEFAULT_LENGTH /factor 
         default_height = DEFAULT_HEIGHT / factor 
 
-    with st.form("room_form", clear_on_submit=not editing):
+
+    form_key = (
+        f"room_form_{selected.id}" 
+        if editing and selected 
+        else "room_form_new"
+    )
+    with st.form(form_key, clear_on_submit=not editing):
         name = st.text_input("Room name", value=selected.name if editing else "Living Room")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -178,12 +188,36 @@ def _render_room_form(home: Home) -> None:
             selected.height = height_cm
             st.success(f"Updated **{selected.name}**.")
         else:
+            existing_names = [r.name for r in home.rooms]
+
+            original_name = name
+            counter = 2
+
+            while name in existing_names:
+                name = f"{original_name} {counter}"
+                counter += 1
             room = Room(
                 name=name,
                 width=width_cm,
                 length=length_cm,
                 height=height_cm,
             )
+
+            if home.rooms:
+                last = home.rooms[-1]
+
+                room.position = (
+                    last.position[0] + last.width + 50,
+                    last.position[1]
+                )
+
+            home.rooms.append(room)
+
+            st.session_state.selected_room_id = room.id
+            st.session_state.adding_room = False
+
+            st.success(f"Added **{room.name}**.")
+
             if home.rooms:
                 last = home.rooms[-1]
                 room.position = (
