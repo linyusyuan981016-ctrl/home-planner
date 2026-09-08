@@ -50,6 +50,7 @@ class Furniture:
     depth: float
     x: float
     y: float
+    rotation: float
     id: str = field(default_factory=_new_id)
 
 

@@ -1,0 +1,36 @@
+---
+description: Home Planner product philosophy and constraints
+alwaysApply: true
+---
+
+# Home Planner — Product Rules
+
+Simple over professional. Built for homeowners, not architects.
+
+## Always
+
+- Dimension-first: every object has real W × D × H
+- Simple geometry: rectangles and blocks only
+- Explain why: recommendations include reasoning
+- Reduce complexity: cut features that feel like CAD tools
+- User language: "walking space" not "circulation path"
+
+## Never (unless explicitly scoped)
+
+- Photorealistic rendering, textures, colors
+- Detailed 3D furniture models or libraries
+- Professional CAD export
+- Features from later build phases (see docs/FEATURES.md)
+
+## Build order
+
+1. Dimensions → Map (current)
+2. Basic Interior → 3. Fit Checks → 4. Shopping → 5. AI → 6. Organization
+
+Do not implement later features before their dependencies.
+
+## Reference
+
+- AGENTS.md — agent onboarding
+- docs/PRODUCT.md — vision
+- docs/features/01-dimensions-to-map.md — current feature spec

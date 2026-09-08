@@ -102,7 +102,7 @@ def _render_room_form(home: Home) -> None:
     factor = conversion[display_unit]
     st.caption(
         f"Enter basic measurements. All dimensions are in {display_unit}."
-        f"All measurements are stored internally in centimeters"
+        f" All measurements are stored internally in centimeters"
     )
 
     selected = _find_room(
@@ -185,7 +185,7 @@ def _render_room_form(home: Home) -> None:
 
             selected.width = width_cm
             selected.length = length_cm
-            selected.height = height_cm
+            # selected.height = height_cm
             st.success(f"Updated **{selected.name}**.")
         else:
             existing_names = [r.name for r in home.rooms]
@@ -282,7 +282,7 @@ def main() -> None:
 
     _render_sidebar(home)
 
-    left, right = st.columns([1, 2], gap="large")
+    left, right = st.columns([100,100], gap="small")
 
     with left:
         # furniture_name = st.text_input("Furniture name", value="Sofa")
@@ -311,6 +311,11 @@ def main() -> None:
                 furniture_name = st.text_input(
                     "Furniture name",
                     value = "Sofa"
+                )
+                furniture_rotation = st.selectbox(
+                    "Rotation" ,
+                    options=[0.0, 90.0, 180.0, 270.0],
+                    format_func=lambda x: f"{x}°"
                 )
                 col1, col2 = st.columns(2)
 
@@ -370,6 +375,12 @@ def main() -> None:
                 furniture_depth_cm = furniture_depth * factor
                 furniture_x_cm = furniture_x * factor
                 furniture_y_cm = furniture_y * factor
+                if furniture_rotation == 90:
+                    effective_width_cm = furniture_depth_cm
+                    effective_depth_cm = furniture_width_cm
+                else:
+                    effective_width_cm = furniture_width_cm
+                    effective_depth_cm = furniture_depth_cm
 
                 
 
@@ -377,15 +388,15 @@ def main() -> None:
                     st.error("Furniture name cannot be empty!")
                 elif furniture_width_cm <= 0 or furniture_depth_cm <= 0:
                     st.error("Furniture dimensions must be positive!")
-                elif furniture_width_cm > selected_room.width : 
+                elif effective_width_cm > selected_room.width: 
                     st.error("Furniture is wider than the room!")
-                elif furniture_depth_cm > selected_room.length:
+                elif effective_depth_cm > selected_room.length:
                     st.error("Furniture is deeper than the room!")
                 elif furniture_x_cm < 0 or furniture_y_cm < 0:
                     st.error("Furniture position cannot be negative!")
-                elif furniture_x_cm + furniture_width_cm > selected_room.width:
+                elif furniture_x_cm + effective_width_cm > selected_room.width:
                     st.error("Furniture goes outside the right side of the room.")
-                elif furniture_y_cm + furniture_depth_cm > selected_room.length:
+                elif furniture_y_cm + effective_depth_cm > selected_room.length:
                     st.error("Furniture goes outside the bottom side of the room.")
                 else:
                     # st.session_state.furniture = [
@@ -400,6 +411,7 @@ def main() -> None:
                         "depth": furniture_depth_cm,
                         "x": furniture_x_cm,
                         "y": furniture_y_cm,
+                        "rotation": furniture_rotation
                     })
                     st.success("Furniture added successfully!")
                     st.rerun()
