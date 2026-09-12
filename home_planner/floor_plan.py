@@ -28,6 +28,7 @@ def render_floor_plan(
         selected_room = home.rooms[0]
 
     updated_furniture = konva_floor_plan(
+        room_id=selected_room.id,
         room_width=float(selected_room.width),
         room_length=float(selected_room.length),
         room_height=float(selected_room.height),

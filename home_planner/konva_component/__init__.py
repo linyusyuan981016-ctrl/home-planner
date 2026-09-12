@@ -11,12 +11,14 @@ _konva_component = components.declare_component(
 
 
 def konva_floor_plan(
+    room_id,
     room_width,
     room_length,
     room_height,
     furniture,
 ):
     return _konva_component(
+        room_id=room_id,
         room_width=room_width,
         room_length=room_length,
         room_height=room_height,

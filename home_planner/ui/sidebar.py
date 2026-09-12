@@ -15,7 +15,7 @@ def render_sidebar(home: Home) -> None:
     st.sidebar.header("Rooms")
 
     if not home.rooms:
-        st.sidebar.caption("No rooms yet — add one in the main panel.")
+        st.sidebar.caption("No rooms yet — add one in the room panel.")
         return
 
     room_names = {room.name: room.id for room in home.rooms}

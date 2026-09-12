@@ -50,8 +50,9 @@ class Furniture:
     depth: float
     x: float
     y: float
-    rotation: float
+    rotation: float = 0.0
     id: str = field(default_factory=_new_id)
+    room_id: str | None = None
 
 
 @dataclass

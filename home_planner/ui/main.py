@@ -21,14 +21,14 @@ def run_app() -> None:
     st.title("Home Planner")
     st.markdown("Turn room measurements into a simple, dimension-accurate floor plan.")
 
-    display_unit: Unit = st.selectbox("Display unit", UNITS)
+    display_unit: Unit = st.selectbox("Display unit", UNITS, key="display_unit")
 
     render_sidebar(home)
 
     left, right = st.columns([1, 2], gap="large")
 
     with left:
-        selected_room = render_room_panel(home, display_unit)
+        selected_room = render_room_panel(home)
         render_furniture_panel(selected_room)
 
     with right:

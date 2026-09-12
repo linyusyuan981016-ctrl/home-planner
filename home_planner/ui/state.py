@@ -14,3 +14,5 @@ def init_session_state() -> None:
         st.session_state.selected_room_id = None
     if "furniture" not in st.session_state:
         st.session_state.furniture: list[Furniture] = []
+    if "editing_furniture_id" not in st.session_state:
+        st.session_state.editing_furniture_id = None

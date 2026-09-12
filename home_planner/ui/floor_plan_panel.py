@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+
 import streamlit as st
 
+from home_planner.floor_plan import render_floor_plan
 from home_planner.models import Home
-from home_planner.rendering.floor_plan import render_floor_plan
 from home_planner.units import Unit
 
 
@@ -16,10 +18,21 @@ def render_floor_plan_panel(
     display_unit: Unit,
 ) -> None:
     st.subheader("2D floor plan")
-    fig = render_floor_plan(
+    room_furniture = [
+        item
+        for item in st.session_state.furniture
+        if item.room_id == selected_room_id
+    ]
+    updated_furniture = render_floor_plan(
         home,
         selected_room_id=selected_room_id,
-        furniture=st.session_state.furniture,
+        furniture=[asdict(item) for item in room_furniture],
         display_unit=display_unit,
     )
-    st.pyplot(fig, use_container_width=True)
+    if updated_furniture is not None:
+        updated_by_id = {item["id"]: item for item in updated_furniture}
+        for item in room_furniture:
+            updated = updated_by_id.get(item.id)
+            if updated:
+                item.x = float(updated["x"])
+                item.y = float(updated["y"])

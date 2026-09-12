@@ -31,6 +31,16 @@ class TestFurniture(unittest.TestCase):
         item = Furniture(name="Rug", width=400, depth=300, x=0, y=0)
         self.assertTrue(furniture_fits(room, item))
 
-
+    def test_rotated_furniture_uses_swapped_dimensions(self):
+        room = Room(name="Narrow Room", width=100, length=200, height=250)
+        item = Furniture(
+            name="Table",
+            width=150,
+            depth=100,
+            x=0,
+            y=0,
+            rotation=90,
+        )
+        self.assertTrue(furniture_fits(room, item))
 if __name__ == "__main__":
     unittest.main()

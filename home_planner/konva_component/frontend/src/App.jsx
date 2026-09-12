@@ -6,6 +6,7 @@ import {
   Text,
   Group,
   Line,
+  Arrow,
 } from "react-konva";
 
 import {
@@ -18,6 +19,7 @@ function App(props) {
   const args = props.args || {};
 
   const furniture = args.furniture || [];
+  const roomId = String(args.room_id || "default");
   const roomWidth = Number(args.room_width || 400);
   const roomLength = Number(args.room_length || 300);
   const roomHeight = Number(args.room_height || 250);
@@ -35,14 +37,30 @@ function App(props) {
   const roomX=80;
   const roomY=60;
 
+  const storageKey = `home-planner-furniture-${roomId}`;
   const [items, setItems] = useState(furniture);
 
 
   // When Python sends updated furniture,
   // update the Konva furniture list.
+  const furnitureJson = JSON.stringify(furniture);
   useEffect(() => {
-    setItems(furniture);
-  }, [JSON.stringify(furniture)]);
+    const stored = window.sessionStorage.getItem(storageKey);
+    if (stored && stored !== furnitureJson) {
+      const pending = JSON.parse(stored);
+      const pendingIds = pending.map((item) => item.id).sort().join(",");
+      const incoming = JSON.parse(furnitureJson);
+      const incomingIds = incoming.map((item) => item.id).sort().join(",");
+      if (pendingIds === incomingIds) {
+        setItems(pending);
+        Streamlit.setComponentValue(pending);
+        return;
+      }
+    }
+
+    window.sessionStorage.removeItem(storageKey);
+    setItems(JSON.parse(furnitureJson));
+  }, [furnitureJson, storageKey]);
 
 
   // Tell Streamlit how tall the component should be.
@@ -51,15 +69,15 @@ function App(props) {
   }, [roomLengthPx]);
 
 
-  function handleDragEnd(index, e) {
+  function handleDragEnd(itemId, e) {
     const group = e.target;
 
     // Convert pixels back to centimeters.
     const newX = (group.x() - roomX) / scale;
     const newY = (group.y() - roomY) / scale;
 
-    const updatedItems = items.map((item, i) => {
-      if (i === index) {
+    const updatedItems = items.map((item) => {
+      if (item.id === itemId) {
         return {
           ...item,
           x: newX,
@@ -72,6 +90,8 @@ function App(props) {
     
     // Update React immediately.
     setItems(updatedItems);
+    const updatedJson = JSON.stringify(updatedItems);
+    window.sessionStorage.setItem(storageKey, updatedJson);
 
     // Send ALL furniture positions back to Python.
     Streamlit.setComponentValue(updatedItems);
@@ -184,9 +204,41 @@ function App(props) {
           listening={false}
         />
 
+        {/* Room coordinate axes */}
+        <Arrow
+          points={[roomX, roomY + roomLengthPx + 32, roomX + roomWidthPx, roomY + roomLengthPx + 32]}
+          pointerLength={8}
+          pointerWidth={8}
+          stroke="#64748b"
+          fill="#64748b"
+          strokeWidth={1}
+        />
+        <Text
+          x={roomX + roomWidthPx + 10}
+          y={roomY + roomLengthPx + 24}
+          text="X"
+          fontSize={14}
+          fill="#475569"
+        />
+        <Arrow
+          points={[roomX + roomWidthPx + 32, roomY + roomLengthPx, roomX + roomWidthPx + 32, roomY]}
+          pointerLength={8}
+          pointerWidth={8}
+          stroke="#64748b"
+          fill="#64748b"
+          strokeWidth={1}
+        />
+        <Text
+          x={roomX + roomWidthPx + 24}
+          y={roomY - 18}
+          text="Y"
+          fontSize={14}
+          fill="#475569"
+        />
+
 
         {/* Furniture */}
-        {items.map((item, index) => {
+        {items.map((item) => {
           const widthPx =
             Number(item.width) * scale;
 
@@ -250,7 +302,7 @@ function App(props) {
               }}
 
               onDragEnd={(e) =>
-                handleDragEnd(index, e) 
+                handleDragEnd(item.id, e)
 
                 
               }
