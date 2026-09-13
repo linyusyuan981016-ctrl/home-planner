@@ -76,11 +76,14 @@ def _draw_furniture(ax: plt.Axes, room: Room, furniture: Furniture) -> None:
     room_x, room_y = room.position
     x = room_x + furniture.x
     y = room_y + furniture.y
+    rotated = furniture.rotation in (90, 270)
+    width = furniture.depth if rotated else furniture.width
+    depth = furniture.width if rotated else furniture.depth
 
     rect = plt.Rectangle(
         (x, y),
-        furniture.width,
-        furniture.depth,
+        width,
+        depth,
         fill=True,
         facecolor="#ffffff",
         edgecolor="#111827",
@@ -89,8 +92,8 @@ def _draw_furniture(ax: plt.Axes, room: Room, furniture: Furniture) -> None:
     ax.add_patch(rect)
 
     ax.text(
-        x + furniture.width / 2,
-        y + furniture.depth / 2,
+        x + width / 2,
+        y + depth / 2,
         furniture.name,
         ha="center",
         va="center",
@@ -147,6 +150,7 @@ def render_floor_plan(
     pad = max(max(xs) - min(xs), max(ys) - min(ys)) * 0.15 + 30
     ax.set_xlim(min(xs) - pad, max(xs) + pad)
     ax.set_ylim(min(ys) - pad, max(ys) + pad)
+    ax.invert_yaxis()
 
     ax.grid(True, linestyle="--", linewidth=0.5, color="#e2e8f0", alpha=0.8)
     ax.set_xlabel(display_unit)

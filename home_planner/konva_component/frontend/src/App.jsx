@@ -52,8 +52,15 @@ function App(props) {
       const incoming = JSON.parse(furnitureJson);
       const incomingIds = incoming.map((item) => item.id).sort().join(",");
       if (pendingIds === incomingIds) {
-        setItems(pending);
-        Streamlit.setComponentValue(pending);
+        const pendingById = new Map(pending.map((item) => [item.id, item]));
+        const reconciled = incoming.map((item) => {
+          const pendingItem = pendingById.get(item.id);
+          return pendingItem
+            ? { ...item, x: pendingItem.x, y: pendingItem.y }
+            : item;
+        });
+        setItems(reconciled);
+        Streamlit.setComponentValue(reconciled);
         return;
       }
     }
