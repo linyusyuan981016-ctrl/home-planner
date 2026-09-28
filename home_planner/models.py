@@ -18,13 +18,14 @@ def _new_id() -> str:
 class Opening:
     id: str
     room_id: str
-    wall_id: str
+    wall_id: str  # top, right, bottom, or left
     type: OpeningType
     offset: float  # cm from wall start
     width: float
     height: float
     sill_height: float | None = None
     swing: Swing | None = None
+    name: str = ""
 
 
 @dataclass
@@ -53,6 +54,7 @@ class Furniture:
     rotation: float = 0.0
     id: str = field(default_factory=_new_id)
     room_id: str | None = None
+    furniture_type: str = "Other"
 
 
 @dataclass
@@ -65,6 +67,11 @@ class Room:
     position: tuple[float, float] = (0.0, 0.0)
     rotation: float = 0.0
     openings: list[Opening] = field(default_factory=list)
+    room_type: str = "Other"
+
+    @property
+    def label(self) -> str:
+        return f"{self.room_type}: {self.name}"
 
     @property
     def walls(self) -> list[Wall]:
@@ -88,3 +95,4 @@ class Home:
     units: Literal["cm", "in"] = "cm"
     rooms: list[Room] = field(default_factory=list)
     id: str = field(default_factory=_new_id)
+    connected: bool = False

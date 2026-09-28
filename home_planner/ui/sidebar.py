@@ -18,15 +18,16 @@ def render_sidebar(home: Home) -> None:
         st.sidebar.caption("No rooms yet — add one in the room panel.")
         return
 
-    room_names = {room.name: room.id for room in home.rooms}
-    ids = list(room_names.values())
+    room_options = {room.id: room.label for room in home.rooms}
+    ids = list(room_options)
     current_id = st.session_state.selected_room_id
     if current_id not in ids:
         current_id = ids[0]
 
-    selected_name = st.sidebar.radio(
+    selected_id = st.sidebar.radio(
         "Select room",
-        options=list(room_names.keys()),
+        options=ids,
         index=ids.index(current_id),
+        format_func=room_options.get,
     )
-    st.session_state.selected_room_id = room_names[selected_name]
+    st.session_state.selected_room_id = selected_id

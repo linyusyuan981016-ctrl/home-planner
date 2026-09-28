@@ -6,10 +6,11 @@ import streamlit as st
 
 from home_planner.ui.floor_plan_panel import render_floor_plan_panel
 from home_planner.ui.furniture_panel import render_furniture_panel
+from home_planner.ui.ai_panel import render_ai_panel
 from home_planner.ui.room_panel import render_room_panel
 from home_planner.ui.sidebar import render_sidebar
 from home_planner.ui.state import init_session_state
-from home_planner.units import UNITS, Unit
+from home_planner.units import DISPLAY_UNITS, Unit
 
 
 def run_app() -> None:
@@ -21,15 +22,16 @@ def run_app() -> None:
     st.title("Home Planner")
     st.markdown("Turn room measurements into a simple, dimension-accurate floor plan.")
 
-    display_unit: Unit = st.selectbox("Display unit", UNITS, key="display_unit")
+    display_unit: Unit = st.selectbox("Display unit", DISPLAY_UNITS, key="display_unit")
 
     render_sidebar(home)
+    render_ai_panel(home, st.session_state.furniture)
 
     left, right = st.columns([1, 2], gap="large")
 
     with left:
-        selected_room = render_room_panel(home)
-        render_furniture_panel(selected_room)
+        selected_room = render_room_panel(home, display_unit)
+        render_furniture_panel(selected_room, display_unit)
 
     with right:
         render_floor_plan_panel(

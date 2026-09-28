@@ -6,7 +6,6 @@ import {
   Text,
   Group,
   Line,
-  Arrow,
 } from "react-konva";
 
 import {
@@ -23,65 +22,76 @@ function App(props) {
   const roomWidth = Number(args.room_width || 400);
   const roomLength = Number(args.room_length || 300);
   const roomHeight = Number(args.room_height || 250);
+  const roomLabel = args.room_label || "Room";
+  const displayUnit = args.display_unit || "m";
+  const rooms = args.rooms || [{
+    id: roomId,
+    label: roomLabel,
+    width: roomWidth,
+    length: roomLength,
+    height: roomHeight,
+    x: 0,
+    y: 0,
+    openings: [],
+  }];
+  const unitFactors = { m: 100, inch: 2.54, feet: 30.48 };
+  const unitFactor = unitFactors[displayUnit] || 1;
+  const formatDimension = (value) => `${(Number(value) / unitFactor).toFixed(2)} ${displayUnit}`;
 
+  const canvasWidth = 840;
+  const canvasHeight = 640;
   const maxWidth = 700;
   const maxHeight = 500;
+  const [planRooms, setPlanRooms] = useState(rooms);
+  const minRoomX = Math.min(...planRooms.map((room) => Number(room.x)));
+  const minRoomY = Math.min(...planRooms.map((room) => Number(room.y)));
+  const maxRoomX = Math.max(...planRooms.map((room) => Number(room.x) + Number(room.width)));
+  const maxRoomY = Math.max(...planRooms.map((room) => Number(room.y) + Number(room.length)));
+  const planWidth = maxRoomX - minRoomX;
+  const planLength = maxRoomY - minRoomY;
 
-  const scaleX = maxWidth / roomWidth;
-  const scaleY = maxHeight / roomLength;
+  const scaleX = maxWidth / planWidth;
+  const scaleY = maxHeight / planLength;
   const scale = Math.min(scaleX, scaleY);
 
-  const roomWidthPx = roomWidth * scale;
-  const roomLengthPx = roomLength * scale;
-
-  const roomX=80;
-  const roomY=60;
-
+  const planX = 80 - minRoomX * scale;
+  const planY = 60 - minRoomY * scale;
+  const roomX = planX;
+  const roomY = planY;
   const storageKey = `home-planner-furniture-${roomId}`;
   const [items, setItems] = useState(furniture);
+  const roomsJson = JSON.stringify(rooms);
+  const roomOrigins = new Map(planRooms.map((room) => [room.id, {
+    x: planX + Number(room.x) * scale,
+    y: planY + Number(room.y) * scale,
+  }]));
 
 
   // When Python sends updated furniture,
   // update the Konva furniture list.
   const furnitureJson = JSON.stringify(furniture);
   useEffect(() => {
-    const stored = window.sessionStorage.getItem(storageKey);
-    if (stored && stored !== furnitureJson) {
-      const pending = JSON.parse(stored);
-      const pendingIds = pending.map((item) => item.id).sort().join(",");
-      const incoming = JSON.parse(furnitureJson);
-      const incomingIds = incoming.map((item) => item.id).sort().join(",");
-      if (pendingIds === incomingIds) {
-        const pendingById = new Map(pending.map((item) => [item.id, item]));
-        const reconciled = incoming.map((item) => {
-          const pendingItem = pendingById.get(item.id);
-          return pendingItem
-            ? { ...item, x: pendingItem.x, y: pendingItem.y }
-            : item;
-        });
-        setItems(reconciled);
-        Streamlit.setComponentValue(reconciled);
-        return;
-      }
-    }
-
-    window.sessionStorage.removeItem(storageKey);
     setItems(JSON.parse(furnitureJson));
   }, [furnitureJson, storageKey]);
+
+  useEffect(() => {
+    setPlanRooms(JSON.parse(roomsJson));
+  }, [roomsJson]);
 
 
   // Tell Streamlit how tall the component should be.
   useEffect(() => {
-    Streamlit.setFrameHeight(roomLengthPx + 80);
-  }, [roomLengthPx]);
+    Streamlit.setFrameHeight(canvasHeight);
+  }, []);
 
 
   function handleDragEnd(itemId, e) {
     const group = e.target;
+    const item = items.find((candidate) => candidate.id === itemId);
+    const origin = roomOrigins.get(item?.room_id) || { x: roomX, y: roomY };
 
-    // Convert pixels back to centimeters.
-    const newX = (group.x() - roomX) / scale;
-    const newY = (group.y() - roomY) / scale;
+    const newX = (group.x() - origin.x) / scale;
+    const newY = (group.y() - origin.y) / scale;
 
     const updatedItems = items.map((item) => {
       if (item.id === itemId) {
@@ -97,151 +107,176 @@ function App(props) {
     
     // Update React immediately.
     setItems(updatedItems);
-    const updatedJson = JSON.stringify(updatedItems);
-    window.sessionStorage.setItem(storageKey, updatedJson);
+      Streamlit.setComponentValue({ furniture: updatedItems, openings: {}, rooms: {} });
+  }
 
-    // Send ALL furniture positions back to Python.
-    Streamlit.setComponentValue(updatedItems);
+  function handleOpeningDragEnd(room, opening, event) {
+    event.cancelBubble = true;
+    const group = event.target;
+    const origin = roomOrigins.get(room.id);
+    const absolutePosition = group.getAbsolutePosition();
+    const localX = (absolutePosition.x - origin.x) / scale;
+    const localY = (absolutePosition.y - origin.y) / scale;
+    const candidates = [
+      { wall_id: "top", distance: Math.abs(localY) },
+      { wall_id: "bottom", distance: Math.abs(localY - Number(room.length)) },
+      { wall_id: "left", distance: Math.abs(localX) },
+      { wall_id: "right", distance: Math.abs(localX - Number(room.width)) },
+    ];
+    const wallId = candidates.sort((a, b) => a.distance - b.distance)[0].wall_id;
+    const horizontal = wallId === "top" || wallId === "bottom";
+    const wallLength = horizontal ? Number(room.width) : Number(room.length);
+    const openingLength = Math.min(Number(opening.width), wallLength);
+    const offset = Math.max(0, Math.min(
+      (horizontal ? localX : localY) - openingLength / 2,
+      wallLength - openingLength,
+    ));
+    const snappedX = horizontal
+      ? (offset + openingLength / 2) * scale
+      : wallId === "right" ? Number(room.width) * scale : 0;
+    const snappedY = horizontal
+      ? wallId === "bottom" ? Number(room.length) * scale : 0
+      : (offset + openingLength / 2) * scale;
+    group.position({ x: snappedX, y: snappedY });
+    const updatedRooms = planRooms.map((entry) => ({
+      ...entry,
+      openings: entry.openings.map((existing) => (
+        entry.id === room.id && existing.id === opening.id
+          ? { ...existing, wall_id: wallId, offset, width: openingLength }
+          : existing
+      )),
+    }));
+    setPlanRooms(updatedRooms);
+    const updatedOpenings = Object.fromEntries(updatedRooms.map((entry) => [
+      entry.id,
+      Object.fromEntries(entry.openings.map((existing) => [existing.id, {
+        wall_id: existing.wall_id,
+        offset: existing.offset,
+        width: existing.width,
+      }])),
+    ]));
+      Streamlit.setComponentValue({ furniture: items, openings: updatedOpenings, rooms: {} });
+  }
+
+  function handleRoomDragEnd(room, event) {
+    if (event.target !== event.currentTarget) return;
+    const group = event.currentTarget;
+    const nextX = (group.x() - 80) / scale + minRoomX;
+    const nextY = (group.y() - 60) / scale + minRoomY;
+    const updatedRooms = planRooms.map((entry) => (
+      entry.id === room.id ? { ...entry, x: nextX, y: nextY } : entry
+    ));
+    setPlanRooms(updatedRooms);
+    Streamlit.setComponentValue({
+      furniture: items,
+      openings: {},
+      rooms: Object.fromEntries(updatedRooms.map((entry) => [
+        entry.id,
+        { x: entry.x, y: entry.y },
+      ])),
+    });
   }
 
 
   return (
     <Stage
-      width={roomWidthPx + 140}
-      height={roomLengthPx + 140}
+      width={canvasWidth}
+      height={canvasHeight}
     >
       <Layer>
 
-        {/* Room boundary */}
-        <Rect
-          x={roomX}
-          y={roomY}
-          width={roomWidthPx}
-          height={roomLengthPx}
-          stroke="black"
-          strokeWidth={3}
-        />
-        {/* Room width dimension */}
-        <Line
-          points={[
-            roomX,
-            roomY - 25,
-            roomX + roomWidthPx,
-            roomY - 25
-          ]}
-          stroke="black"
-          strokeWidth={1}
-        />
+        {planRooms.map((room) => {
+          const origin = roomOrigins.get(room.id);
+          const widthPx = Number(room.width) * scale;
+          const lengthPx = Number(room.length) * scale;
 
-        <Line
-          points={[
-            roomX,
-            roomY - 32,
-            roomX,
-            roomY - 18
-          ]}
-          stroke="black"
-        />
+          return (
+              <Group
+                key={`${room.id}:${room.x}:${room.y}`}
+                x={origin.x}
+                y={origin.y}
+                draggable={Boolean(args.connected)}
+                dragBoundFunc={(position) => ({
+                  x: Math.max(20, Math.min(position.x, canvasWidth - widthPx - 20)),
+                  y: Math.max(20, Math.min(position.y, canvasHeight - lengthPx - 20)),
+                })}
+                onDragEnd={(event) => handleRoomDragEnd(room, event)}
+              >
+              <Rect
+                x={0}
+                y={0}
+                width={widthPx}
+                height={lengthPx}
+                stroke="black"
+                strokeWidth={3}
+                fill="#f8fafc"
+              />
+              <Text
+                x={6}
+                y={6}
+                width={widthPx - 12}
+                text={`${room.label}\n${formatDimension(room.width)} × ${formatDimension(room.length)}`}
+                fontSize={14}
+                fill="#111827"
+                listening={false}
+              />
+              {room.openings.map((opening) => {
+                const alongHorizontalWall = opening.wall_id === "top" || opening.wall_id === "bottom";
+                const openingPixels = Number(opening.width) * scale;
+                const centerX = alongHorizontalWall
+                  ? (Number(opening.offset) + Number(opening.width) / 2) * scale
+                  : opening.wall_id === "right" ? widthPx : 0;
+                const centerY = alongHorizontalWall
+                  ? opening.wall_id === "bottom" ? lengthPx : 0
+                  : (Number(opening.offset) + Number(opening.width) / 2) * scale;
 
-        <Line
-          points={[
-            roomX + roomWidthPx,
-            roomY - 32,
-            roomX + roomWidthPx,
-            roomY - 18
-          ]}
-          stroke="black"
-        />
-
-        <Text
-          x={roomX}
-          y={roomY - 48}
-          width={roomWidthPx}
-          align="center"
-          text={`${roomWidth.toFixed(1)} cm`}
-          fontSize={14}
-        />
-
-
-        {/* Room length dimension */}
-        <Line
-          points={[
-            roomX - 30,
-            roomY,
-            roomX - 30,
-            roomY + roomLengthPx
-          ]}
-          stroke="black"
-          strokeWidth={1}
-        />
-
-        <Line
-          points={[
-            roomX - 37,
-            roomY,
-            roomX - 23,
-            roomY
-          ]}
-          stroke="black"
-        />
-
-        <Line
-          points={[
-            roomX - 37,
-            roomY + roomLengthPx,
-            roomX - 23,
-            roomY + roomLengthPx
-          ]}
-          stroke="black"
-        />
-
-        <Text
-          x={10}
-          y={roomY + roomLengthPx / 2 - 10}
-          text={`${roomLength.toFixed(1)} cm`}
-          fontSize={14}
-          rotation={-90}
-        />
-        <Text
-          x={30}
-          y={30}
-          text={`Room: ${roomWidth.toFixed(1)} × ${roomLength.toFixed(1)} cm\nHeight: ${roomHeight.toFixed(1)} cm`}
-          fontSize={16}
-          fill="black"
-          listening={false}
-        />
-
-        {/* Room coordinate axes */}
-        <Arrow
-          points={[roomX, roomY + roomLengthPx + 32, roomX + roomWidthPx, roomY + roomLengthPx + 32]}
-          pointerLength={8}
-          pointerWidth={8}
-          stroke="#64748b"
-          fill="#64748b"
-          strokeWidth={1}
-        />
-        <Text
-          x={roomX + roomWidthPx + 10}
-          y={roomY + roomLengthPx + 24}
-          text="X"
-          fontSize={14}
-          fill="#475569"
-        />
-        <Arrow
-          points={[roomX + roomWidthPx + 32, roomY + roomLengthPx, roomX + roomWidthPx + 32, roomY]}
-          pointerLength={8}
-          pointerWidth={8}
-          stroke="#64748b"
-          fill="#64748b"
-          strokeWidth={1}
-        />
-        <Text
-          x={roomX + roomWidthPx + 24}
-          y={roomY - 18}
-          text="Y"
-          fontSize={14}
-          fill="#475569"
-        />
+                return (
+                  <Group
+                    key={`${opening.id}:${opening.wall_id}:${opening.offset}`}
+                    x={centerX}
+                    y={centerY}
+                    draggable
+                    dragBoundFunc={(position) => {
+                      const horizontal = opening.wall_id === "top" || opening.wall_id === "bottom";
+                      const halfWidth = horizontal ? openingPixels / 2 : 8;
+                      const halfHeight = horizontal ? 8 : openingPixels / 2;
+                      return {
+                        x: Math.max(
+                          origin.x + halfWidth,
+                          Math.min(position.x, origin.x + widthPx - halfWidth),
+                        ),
+                        y: Math.max(
+                          origin.y + halfHeight,
+                          Math.min(position.y, origin.y + lengthPx - halfHeight),
+                        ),
+                      };
+                    }}
+                    onDragEnd={(event) => handleOpeningDragEnd(room, opening, event)}
+                  >
+                    <Rect
+                      x={alongHorizontalWall ? -openingPixels / 2 : -8}
+                      y={alongHorizontalWall ? -8 : -openingPixels / 2}
+                      width={alongHorizontalWall ? openingPixels : 16}
+                      height={alongHorizontalWall ? 16 : openingPixels}
+                      fill="#ffffff"
+                      stroke={opening.type === "door" ? "#b45309" : "#0284c7"}
+                      strokeWidth={4}
+                    />
+                    <Text
+                      x={-openingPixels / 2}
+                      y={-24}
+                      width={openingPixels}
+                      align="center"
+                      text={opening.name || opening.type}
+                      fontSize={11}
+                      listening={false}
+                    />
+                  </Group>
+                );
+              })}
+            </Group>
+          );
+        })}
 
 
         {/* Furniture */}
@@ -267,11 +302,10 @@ function App(props) {
               : depthPx;
      
 
-          const x =
-            roomX + Number(item.x) * scale;
-
-          const y =
-            roomY + Number(item.y) * scale;
+          const itemRoom = rooms.find((room) => room.id === item.room_id);
+          const origin = roomOrigins.get(item.room_id) || { x: roomX, y: roomY };
+          const x = origin.x + Number(item.x) * scale;
+          const y = origin.y + Number(item.y) * scale;
 
 
           return (
@@ -282,18 +316,10 @@ function App(props) {
               draggable={true}
 
               dragBoundFunc={(pos) => {
-                const minX = roomX;
-                const minY = roomY;
-
-                const maxX =
-                  roomX +
-                  roomWidthPx -
-                  displayWidthPx;
-
-                const maxY =
-                  roomY +
-                  roomLengthPx -
-                  displayDepthPx;
+                const minX = origin.x;
+                const minY = origin.y;
+                const maxX = origin.x + Number(itemRoom?.width || roomWidth) * scale - displayWidthPx;
+                const maxY = origin.y + Number(itemRoom?.length || roomLength) * scale - displayDepthPx;
 
                 return {
                   x: Math.max(
@@ -325,7 +351,7 @@ function App(props) {
                 stroke="black"
                 strokeWidth={2}
               />
-              {/* Furniture width dimension */}
+              {/* Furniture length dimension */}
               <Line
                 points={[
                   0,
@@ -342,16 +368,16 @@ function App(props) {
                 y={-30}
                 width={displayWidthPx}
                 align="center"
-                text={`${
+                text={formatDimension(
                   rotation === 90 || rotation === 270
-                    ? Number(item.depth).toFixed(1)
-                    : Number(item.width).toFixed(1)
-                } cm`}
+                    ? item.depth
+                    : item.width
+                )}
                 fontSize={12}
               />
 
 
-              {/* Furniture depth dimension */}
+              {/* Furniture breadth dimension */}
               <Line
                 points={[
                   displayWidthPx + 12,
@@ -366,11 +392,11 @@ function App(props) {
               <Text
                 x={displayWidthPx + 18}
                 y={displayDepthPx / 2}
-                text={`${
+                text={formatDimension(
                   rotation === 90 || rotation === 270
-                    ? Number(item.width).toFixed(1)
-                    : Number(item.depth).toFixed(1)
-                } cm`}
+                    ? item.width
+                    : item.depth
+                )}
                 fontSize={12}
                 rotation={90}
               />
@@ -379,9 +405,9 @@ function App(props) {
               {/* Furniture name */}
               <Text
                 x={0}
-                y={depthPx / 2 - 16}
+                y={displayDepthPx / 2 - 16}
                 width={displayWidthPx}
-                text={`${item.name}\n${Number(item.width).toFixed(1)} × ${Number(item.depth).toFixed(1)} cm`}
+                text={`${item.furniture_type || "Furniture"}: ${item.name}\n${formatDimension(item.width)} × ${formatDimension(item.depth)}`}
                 align="center"
                 fontSize={14}
                 listening={false}

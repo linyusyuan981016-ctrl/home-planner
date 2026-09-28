@@ -15,6 +15,37 @@ streamlit run app.py
 
 Open the URL shown in the terminal (default: http://localhost:8501).
 
+## Local AI assistant setup
+
+The optional AI Space Assistant uses Ollama locally. No OpenAI account, API
+key, or cloud billing is required.
+
+### Install Ollama on macOS
+
+1. Download and install Ollama from [ollama.com/download](https://ollama.com/download).
+2. Open the Ollama application once so its local server starts.
+3. In a terminal, download the default model:
+
+	```bash
+	ollama pull llama3.2
+	```
+
+	If you opened the Ollama application, its server is already running. Only
+	run `ollama serve` if this check fails:
+
+	```bash
+	curl http://127.0.0.1:11434/api/tags
+	```
+
+4. In another terminal, start Home Planner:
+
+	```bash
+	streamlit run app.py
+	```
+
+The assistant connects to `http://127.0.0.1:11434`. To use another model or
+server, set `OLLAMA_MODEL` or `OLLAMA_URL` before starting Streamlit.
+
 ## Project structure
 
 ```

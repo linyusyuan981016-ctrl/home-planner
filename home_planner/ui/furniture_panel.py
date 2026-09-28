@@ -4,34 +4,82 @@ from __future__ import annotations
 
 import streamlit as st
 
-from home_planner.constants import DEFAULT_FURNITURE_DEPTH_CM, DEFAULT_FURNITURE_WIDTH_CM
+from home_planner.constants import FURNITURE_TYPES
 from home_planner.models import Furniture, Room
 from home_planner.services.furniture import furniture_fits
-from home_planner.units import UNITS, Unit, from_cm, to_cm
+from home_planner.units import Unit, from_cm, to_cm
 
-ROTATIONS = (0.0, 90.0, 180.0, 270.0)
-
-
-def _effective_dimensions(width: float, depth: float, rotation: float) -> tuple[float, float]:
-    if rotation in (90.0, 270.0):
-        return depth, width
-    return width, depth
+ROTATIONS = (0.0, 90.0)
 
 
-def _position_control(label: str, available: float, value: float, key: str) -> float:
-    max_position = max(0, int(available))
-    if max_position == 0:
-        st.number_input(label, min_value=0.0, max_value=1.0, value=0.0, disabled=True, key=key)
-        return 0.0
-    return float(st.slider(label, min_value=0, max_value=max_position, value=min(int(value), max_position), key=key))
+def _sync_furniture_name(type_key: str, name_key: str) -> None:
+    st.session_state[name_key] = st.session_state[type_key]
 
 
-def _furniture_form(item: Furniture | None, room: Room, form_key: str) -> tuple[dict, bool]:
+def _furniture_form(
+    item: Furniture | None,
+    room: Room,
+    form_key: str,
+    display_unit: Unit,
+) -> tuple[dict, bool]:
     editing = item is not None
     prefix = f"{form_key}_"
+    furniture_type_options = list(FURNITURE_TYPES)
+    context_key = f"{prefix}context"
+    type_key = f"{prefix}type"
+    name_key = f"{prefix}name"
+    width_key = f"{prefix}width"
+    depth_key = f"{prefix}depth"
+    unit_context_key = f"{prefix}unit_context"
+    context = item.id if editing else "new"
+    initial_type = item.furniture_type if editing and item.furniture_type in FURNITURE_TYPES else "Other"
+    if st.session_state.get(context_key) != context:
+        initial_width, initial_depth = FURNITURE_TYPES[initial_type]
+        st.session_state[context_key] = context
+        st.session_state[type_key] = initial_type
+        st.session_state[name_key] = item.name if editing else initial_type
+        st.session_state[f"{prefix}last_type"] = initial_type
+        st.session_state[unit_context_key] = display_unit
+        st.session_state[width_key] = from_cm(
+            item.width if editing else initial_width,
+            display_unit,
+        )
+        st.session_state[depth_key] = from_cm(
+            item.depth if editing else initial_depth,
+            display_unit,
+        )
+
+    furniture_type = st.selectbox(
+        "Furniture type",
+        furniture_type_options,
+        index=(
+            furniture_type_options.index(item.furniture_type)
+            if editing and item.furniture_type in furniture_type_options
+            else furniture_type_options.index("Other") if editing else 0
+        ),
+        key=type_key,
+        on_change=_sync_furniture_name,
+        args=(type_key, name_key),
+    )
+    default_width, default_depth = FURNITURE_TYPES[furniture_type]
+    previous_unit = st.session_state.get(unit_context_key)
+    if previous_unit and previous_unit != display_unit:
+        if width_key in st.session_state:
+            st.session_state[width_key] = from_cm(
+                to_cm(float(st.session_state[width_key]), previous_unit),
+                display_unit,
+            )
+        if depth_key in st.session_state:
+            st.session_state[depth_key] = from_cm(
+                to_cm(float(st.session_state[depth_key]), previous_unit),
+                display_unit,
+            )
+        st.session_state[unit_context_key] = display_unit
     with st.form(form_key, clear_on_submit=not editing):
-        name = st.text_input("Furniture name", value=item.name if editing else "Sofa", key=f"{prefix}name")
-        unit: Unit = st.selectbox("Furniture unit", UNITS, key=f"{prefix}unit")
+        name = st.text_input(
+            "Furniture name",
+            key=name_key,
+        )
         rotation = st.selectbox(
             "Rotation",
             ROTATIONS,
@@ -41,41 +89,38 @@ def _furniture_form(item: Furniture | None, room: Room, form_key: str) -> tuple[
         col1, col2 = st.columns(2)
         with col1:
             width = st.number_input(
-                f"Width ({unit})",
-                min_value=1.0,
-                value=float(from_cm(item.width if editing else DEFAULT_FURNITURE_WIDTH_CM, unit)),
-                key=f"{prefix}width",
+                f"Length ({display_unit})",
+                min_value=float(from_cm(1, display_unit)),
+                value=float(from_cm(item.width if editing else default_width, display_unit)),
+                key=width_key,
             )
         with col2:
             depth = st.number_input(
-                f"Depth ({unit})",
-                min_value=1.0,
-                value=float(from_cm(item.depth if editing else DEFAULT_FURNITURE_DEPTH_CM, unit)),
-                key=f"{prefix}depth",
+                f"Breadth ({display_unit})",
+                min_value=float(from_cm(1, display_unit)),
+                value=float(from_cm(item.depth if editing else default_depth, display_unit)),
+                key=depth_key,
             )
 
-        width_cm = to_cm(width, unit)
-        depth_cm = to_cm(depth, unit)
-        effective_width, effective_depth = _effective_dimensions(width_cm, depth_cm, rotation)
-        col3, col4 = st.columns(2)
-        with col3:
-            x = _position_control("Move left / right", room.width - effective_width, item.x if editing else 0, f"{prefix}x")
-        with col4:
-            y = _position_control("Move up / down", room.length - effective_depth, item.y if editing else 0, f"{prefix}y")
+        width_cm = to_cm(float(width), display_unit)
+        depth_cm = to_cm(float(depth), display_unit)
+        x = item.x if editing else 0.0
+        y = item.y if editing else 0.0
 
         submitted = st.form_submit_button("Update furniture" if editing else "Add furniture", type="primary")
 
     return {
-        "name": name.strip() or "Furniture",
+        "name": name.strip() or furniture_type,
         "width": width_cm,
         "depth": depth_cm,
         "x": x,
         "y": y,
         "rotation": float(rotation),
+        "furniture_type": furniture_type,
     }, submitted
 
 
-def render_furniture_panel(selected_room: Room | None) -> None:
+def render_furniture_panel(selected_room: Room | None, display_unit: Unit) -> None:
     st.header("Furniture")
     if not selected_room:
         st.caption("Add a room first, then you can place furniture.")
@@ -84,7 +129,12 @@ def render_furniture_panel(selected_room: Room | None) -> None:
     editing_id = st.session_state.get("editing_furniture_id")
     room_furniture = [item for item in st.session_state.furniture if item.room_id == selected_room.id]
     editing_item = next((item for item in room_furniture if item.id == editing_id), None)
-    values, submitted = _furniture_form(editing_item, selected_room, "edit_furniture" if editing_item else "add_furniture")
+    values, submitted = _furniture_form(
+        editing_item,
+        selected_room,
+        "edit_furniture" if editing_item else "add_furniture",
+        display_unit,
+    )
 
     if submitted:
         if editing_item:

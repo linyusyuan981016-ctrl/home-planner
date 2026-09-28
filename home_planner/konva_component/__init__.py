@@ -15,6 +15,10 @@ def konva_floor_plan(
     room_width,
     room_length,
     room_height,
+    room_label,
+    display_unit,
+    connected,
+    rooms,
     furniture,
 ):
     return _konva_component(
@@ -22,6 +26,10 @@ def konva_floor_plan(
         room_width=room_width,
         room_length=room_length,
         room_height=room_height,
+        room_label=room_label,
+        display_unit=display_unit,
+        connected=connected,
+        rooms=rooms,
         furniture=furniture,
         default=None,
     )

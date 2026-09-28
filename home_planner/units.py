@@ -14,6 +14,7 @@ CM_PER_UNIT: dict[Unit, float] = {
 }
 
 UNITS: tuple[Unit, ...] = ("cm", "m", "inch", "feet")
+DISPLAY_UNITS: tuple[Unit, ...] = ("m", "inch", "feet")
 
 
 def to_cm(value: float, unit: Unit) -> float:
