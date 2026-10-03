@@ -67,6 +67,8 @@ def render_floor_plan_panel(
             if updated:
                 item.x = float(updated["x"])
                 item.y = float(updated["y"])
+                item.width = float(updated.get("width", item.width))
+                item.depth = float(updated.get("depth", item.depth))
     if isinstance(updated_furniture, dict):
         updated_by_id = {
             item["id"]: item for item in updated_furniture.get("furniture", [])
@@ -76,6 +78,8 @@ def render_floor_plan_panel(
             if updated:
                 item.x = float(updated["x"])
                 item.y = float(updated["y"])
+                item.width = float(updated.get("width", item.width))
+                item.depth = float(updated.get("depth", item.depth))
         updated_openings = updated_furniture.get("openings", {})
         for room in home.rooms:
             for opening in room.openings:

@@ -104,10 +104,26 @@ function App(props) {
 
       return item;
     });
-    
-    // Update React immediately.
     setItems(updatedItems);
-      Streamlit.setComponentValue({ furniture: updatedItems, openings: {}, rooms: {} });
+    Streamlit.setComponentValue({ furniture: updatedItems, openings: {}, rooms: {} });
+  }
+
+  function handleFurnitureResizeEnd(item, event, rotated) {
+    event.cancelBubble = true;
+    const handle = event.target;
+    const displayWidth = Math.max(20, handle.x()) / scale;
+    const displayDepth = Math.max(20, handle.y()) / scale;
+    const updatedItems = items.map((current) => (
+      current.id === item.id
+        ? {
+            ...current,
+            width: rotated ? displayDepth : displayWidth,
+            depth: rotated ? displayWidth : displayDepth,
+          }
+        : current
+    ));
+    setItems(updatedItems);
+    Streamlit.setComponentValue({ furniture: updatedItems, openings: {}, rooms: {} });
   }
 
   function handleOpeningDragEnd(room, opening, event) {
@@ -159,10 +175,12 @@ function App(props) {
   }
 
   function handleRoomDragEnd(room, event) {
-    if (event.target !== event.currentTarget) return;
-    const group = event.currentTarget;
-    const nextX = (group.x() - 80) / scale + minRoomX;
-    const nextY = (group.y() - 60) / scale + minRoomY;
+    event.cancelBubble = true;
+    const handle = event.target;
+    const origin = roomOrigins.get(room.id);
+    const absolutePosition = handle.getAbsolutePosition();
+    const nextX = Number(room.x) + (absolutePosition.x - origin.x - 6) / scale;
+    const nextY = Number(room.y) + (absolutePosition.y - origin.y - 6) / scale;
     const updatedRooms = planRooms.map((entry) => (
       entry.id === room.id ? { ...entry, x: nextX, y: nextY } : entry
     ));
@@ -195,12 +213,6 @@ function App(props) {
                 key={`${room.id}:${room.x}:${room.y}`}
                 x={origin.x}
                 y={origin.y}
-                draggable={Boolean(args.connected)}
-                dragBoundFunc={(position) => ({
-                  x: Math.max(20, Math.min(position.x, canvasWidth - widthPx - 20)),
-                  y: Math.max(20, Math.min(position.y, canvasHeight - lengthPx - 20)),
-                })}
-                onDragEnd={(event) => handleRoomDragEnd(room, event)}
               >
               <Rect
                 x={0}
@@ -220,6 +232,25 @@ function App(props) {
                 fill="#111827"
                 listening={false}
               />
+              {args.connected && (
+                <Text
+                  x={6}
+                  y={6}
+                  width={Math.min(widthPx - 12, 90)}
+                  height={22}
+                  text="Move room"
+                  fontSize={11}
+                  fill="#475569"
+                  draggable
+                  dragBoundFunc={(position) => ({
+                    x: Math.max(origin.x + 6, Math.min(position.x, origin.x + widthPx - 96)),
+                    y: Math.max(origin.y + 6, Math.min(position.y, origin.y + lengthPx - 28)),
+                  })}
+                  onMouseDown={(event) => { event.cancelBubble = true; }}
+                  onTouchStart={(event) => { event.cancelBubble = true; }}
+                  onDragEnd={(event) => handleRoomDragEnd(room, event)}
+                />
+              )}
               {room.openings.map((opening) => {
                 const alongHorizontalWall = opening.wall_id === "top" || opening.wall_id === "bottom";
                 const openingPixels = Number(opening.width) * scale;
@@ -236,6 +267,9 @@ function App(props) {
                     x={centerX}
                     y={centerY}
                     draggable
+                    onMouseDown={(event) => { event.cancelBubble = true; }}
+                    onTouchStart={(event) => { event.cancelBubble = true; }}
+                    onDragStart={(event) => { event.cancelBubble = true; }}
                     dragBoundFunc={(position) => {
                       const horizontal = opening.wall_id === "top" || opening.wall_id === "bottom";
                       const halfWidth = horizontal ? openingPixels / 2 : 8;
@@ -412,6 +446,55 @@ function App(props) {
                 fontSize={14}
                 listening={false}
               />
+
+              <Group
+                x={displayWidthPx}
+                y={displayDepthPx}
+                draggable
+                onMouseDown={(event) => { event.cancelBubble = true; }}
+                onTouchStart={(event) => { event.cancelBubble = true; }}
+                onDragStart={(event) => { event.cancelBubble = true; }}
+                dragBoundFunc={(position) => ({
+                  x: Math.max(
+                    x + 20,
+                    Math.min(
+                      position.x,
+                      x + Number(itemRoom?.width || roomWidth) * scale - Number(item.x) * scale,
+                    ),
+                  ),
+                  y: Math.max(
+                    y + 20,
+                    Math.min(
+                      position.y,
+                      y + Number(itemRoom?.length || roomLength) * scale - Number(item.y) * scale,
+                    ),
+                  ),
+                })}
+                onDragEnd={(event) => handleFurnitureResizeEnd(item, event, rotation === 90 || rotation === 270)}
+              >
+                <Rect
+                  x={-7}
+                  y={-7}
+                  width={14}
+                  height={14}
+                  fill="#0f766e"
+                  stroke="#ffffff"
+                  strokeWidth={2}
+                  cornerRadius={3}
+                />
+                <Text
+                  x={-6}
+                  y={-8}
+                  width={12}
+                  height={14}
+                  text="↘"
+                  align="center"
+                  verticalAlign="middle"
+                  fontSize={11}
+                  fill="#ffffff"
+                  listening={false}
+                />
+              </Group>
 
 
             </Group>

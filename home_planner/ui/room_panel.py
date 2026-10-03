@@ -112,7 +112,12 @@ def render_room_panel(home: Home, display_unit: Unit) -> Room | None:
                 selected.openings.append(create_opening(selected, "window"))
                 st.rerun()
         for opening in selected.openings:
-            with st.expander(f"{opening.type.title()} · {opening.id}"):
+            with st.expander(opening.name or opening.type.title()):
+                opening_name = st.text_input(
+                    "Opening name",
+                    value=opening.name or opening.type.title(),
+                    key=f"opening_name_{opening.id}",
+                )
                 opening_width = st.number_input(
                     f"Length ({display_unit})",
                     min_value=float(from_cm(20, display_unit)),
@@ -126,13 +131,27 @@ def render_room_panel(home: Home, display_unit: Unit) -> Room | None:
                     value=float(from_cm(opening.height, display_unit)),
                     key=f"opening_height_{opening.id}",
                 )
-                if st.button("Save opening size", key=f"save_opening_{opening.id}"):
+                update_col, delete_col = st.columns(2)
+                with update_col:
+                    update_opening = st.button(
+                        "Update opening",
+                        key=f"save_opening_{opening.id}",
+                        use_container_width=True,
+                    )
+                with delete_col:
+                    delete_opening = st.button(
+                        "Delete opening",
+                        key=f"delete_opening_{opening.id}",
+                        use_container_width=True,
+                    )
+                if update_opening:
+                    opening.name = opening_name.strip() or opening.type.title()
                     opening.width = to_cm(float(opening_width), display_unit)
                     opening.height = to_cm(float(opening_height), display_unit)
                     wall_length = selected.width if opening.wall_id in {"top", "bottom"} else selected.length
                     opening.offset = min(opening.offset, max(0, wall_length - opening.width))
                     st.rerun()
-                if st.button("Delete opening", key=f"delete_opening_{opening.id}"):
+                if delete_opening:
                     selected.openings = [
                         existing for existing in selected.openings
                         if existing.id != opening.id
