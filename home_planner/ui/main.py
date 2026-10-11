@@ -20,7 +20,10 @@ def run_app() -> None:
     home = st.session_state.home
 
     st.title("Home Planner")
-    st.markdown("Turn room measurements into a simple, dimension-accurate floor plan.")
+    st.markdown(
+        "Turn room measurements into a clear layout in minutes.\n\n"
+        "Plan smarter, place furniture with confidence, and design your space with ease."
+    )
 
     display_unit: Unit = st.selectbox("Display unit", DISPLAY_UNITS, key="display_unit")
 

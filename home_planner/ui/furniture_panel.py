@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import streamlit as st
 
-from home_planner.constants import FURNITURE_TYPES
+from home_planner.constants import (
+    BED_TYPES,
+    FURNITURE_TYPES,
+    MAX_FURNITURE_DIMENSION_CM,
+    MIN_FURNITURE_DIMENSION_CM,
+)
 from home_planner.models import Furniture, Room
-from home_planner.services.furniture import furniture_fits
+from home_planner.services.furniture import furniture_fits, validate_furniture_dimensions
 from home_planner.units import Unit, from_cm, to_cm
 
 ROTATIONS = (0.0, 90.0)
@@ -30,6 +35,7 @@ def _furniture_form(
     name_key = f"{prefix}name"
     width_key = f"{prefix}width"
     depth_key = f"{prefix}depth"
+    bed_variant_key = f"{prefix}bed_variant"
     unit_context_key = f"{prefix}unit_context"
     context = item.id if editing else "new"
     initial_type = item.furniture_type if editing and item.furniture_type in FURNITURE_TYPES else "Other"
@@ -61,7 +67,26 @@ def _furniture_form(
         on_change=_sync_furniture_name,
         args=(type_key, name_key),
     )
-    default_width, default_depth = FURNITURE_TYPES[furniture_type]
+
+    if furniture_type == "Bed":
+        bed_variant_options = list(BED_TYPES)
+        initial_bed_variant = "Queen"
+        if editing and item.furniture_type == "Bed":
+            for variant_name, dimensions in BED_TYPES.items():
+                if dimensions == (item.width, item.depth) or dimensions == (item.depth, item.width):
+                    initial_bed_variant = variant_name
+                    break
+        bed_variant = st.selectbox(
+            "Bed size",
+            bed_variant_options,
+            index=bed_variant_options.index(st.session_state.get(bed_variant_key, initial_bed_variant)),
+            key=bed_variant_key,
+        )
+        st.caption("Standard bed sizes use fixed dimensions for a consistent fit.")
+        default_width, default_depth = BED_TYPES[bed_variant]
+    else:
+        default_width, default_depth = FURNITURE_TYPES[furniture_type]
+        bed_variant = None
     previous_unit = st.session_state.get(unit_context_key)
     if previous_unit and previous_unit != display_unit:
         if width_key in st.session_state:
@@ -87,23 +112,36 @@ def _furniture_form(
             key=f"{prefix}rotation",
         )
         col1, col2 = st.columns(2)
+        room_max_length = max(room.width, room.length)
+        width_is_fixed = furniture_type == "Bed"
         with col1:
             width = st.number_input(
                 f"Length ({display_unit})",
-                min_value=float(from_cm(1, display_unit)),
+                min_value=float(from_cm(MIN_FURNITURE_DIMENSION_CM, display_unit)),
+                max_value=float(from_cm(min(room_max_length, MAX_FURNITURE_DIMENSION_CM), display_unit)),
                 value=float(from_cm(item.width if editing else default_width, display_unit)),
                 key=width_key,
+                disabled=width_is_fixed,
             )
         with col2:
             depth = st.number_input(
                 f"Breadth ({display_unit})",
-                min_value=float(from_cm(1, display_unit)),
+                min_value=float(from_cm(MIN_FURNITURE_DIMENSION_CM, display_unit)),
+                max_value=float(from_cm(min(room_max_length, MAX_FURNITURE_DIMENSION_CM), display_unit)),
                 value=float(from_cm(item.depth if editing else default_depth, display_unit)),
                 key=depth_key,
+                disabled=width_is_fixed,
             )
 
-        width_cm = to_cm(float(width), display_unit)
-        depth_cm = to_cm(float(depth), display_unit)
+        if bed_variant is not None:
+            width_cm = BED_TYPES[bed_variant][0]
+            depth_cm = BED_TYPES[bed_variant][1]
+        else:
+            width_cm = to_cm(float(width), display_unit)
+            depth_cm = to_cm(float(depth), display_unit)
+        validation_error = validate_furniture_dimensions(width_cm, depth_cm, room, float(rotation))
+        if validation_error:
+            st.warning(validation_error)
         x = item.x if editing else 0.0
         y = item.y if editing else 0.0
 
@@ -137,6 +175,16 @@ def render_furniture_panel(selected_room: Room | None, display_unit: Unit) -> No
     )
 
     if submitted:
+        validation_error = validate_furniture_dimensions(
+            values["width"],
+            values["depth"],
+            selected_room,
+            float(values["rotation"]),
+        )
+        if validation_error:
+            st.error(validation_error)
+            return
+
         if editing_item:
             updated_item = Furniture(**values, id=editing_item.id, room_id=selected_room.id)
             if not furniture_fits(selected_room, updated_item):

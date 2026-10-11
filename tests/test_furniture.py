@@ -3,7 +3,7 @@
 import unittest
 
 from home_planner.models import Furniture, Room
-from home_planner.services.furniture import furniture_fits
+from home_planner.services.furniture import furniture_fits, validate_furniture_dimensions
 
 
 def _living_room() -> Room:
@@ -42,5 +42,12 @@ class TestFurniture(unittest.TestCase):
             rotation=90,
         )
         self.assertTrue(furniture_fits(room, item))
+
+    def test_validate_furniture_dimensions_rejects_invalid_sizes(self):
+        room = _living_room()
+        self.assertIsNone(validate_furniture_dimensions(200, 90, room))
+        self.assertIn("greater than zero", validate_furniture_dimensions(0, 90, room))
+        self.assertIn("exceed the room size", validate_furniture_dimensions(500, 90, room))
+
 if __name__ == "__main__":
     unittest.main()
