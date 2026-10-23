@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 from matplotlib.figure import Figure
 
+from home_planner.constants import APP_BACKGROUND, ROOM_COLORS
 from home_planner.models import Furniture, Home, Room
 from home_planner.units import Unit, format_length, from_cm
 
@@ -21,7 +22,7 @@ def _draw_room(
     width, length = room.width, room.length
 
     color = "#2563eb" if highlight else "#334155"
-    fill = "#dbeafe" if highlight else "#f8fafc"
+    fill = ROOM_COLORS.get(room.room_type, ROOM_COLORS["Other"])
 
     rect = plt.Rectangle(
         (x, y),
@@ -163,7 +164,8 @@ def render_floor_plan(
     furniture = furniture or []
     fig, ax = plt.subplots(figsize=(8, 6))
     ax.set_aspect("equal")
-    ax.set_facecolor("#ffffff")
+    fig.set_facecolor(APP_BACKGROUND)
+    ax.set_facecolor(APP_BACKGROUND)
 
     if not home.rooms:
         ax.text(

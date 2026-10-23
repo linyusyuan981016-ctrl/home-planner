@@ -93,13 +93,3 @@ def render_floor_plan_panel(
             if updated:
                 room.position = (float(updated["x"]), float(updated["y"]))
 
-    if home.rooms:
-        pdf_bytes = _build_floor_plan_pdf(home, display_unit, st.session_state.furniture)
-        st.download_button(
-            "Download floor plan PDF",
-            data=pdf_bytes,
-            file_name="home-plan.pdf",
-            mime="application/pdf",
-            key="download_floor_plan_pdf",
-            on_click="ignore",
-        )

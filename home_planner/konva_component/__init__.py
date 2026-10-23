@@ -20,8 +20,9 @@ def konva_floor_plan(
     connected,
     rooms,
     furniture,
+    room_colors=None,
 ):
-    return _konva_component(
+    component_args = dict(
         room_id=room_id,
         room_width=room_width,
         room_length=room_length,
@@ -33,3 +34,6 @@ def konva_floor_plan(
         furniture=furniture,
         default=None,
     )
+    if room_colors is not None:
+        component_args["room_colors"] = room_colors
+    return _konva_component(**component_args)

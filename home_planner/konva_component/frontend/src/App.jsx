@@ -13,6 +13,8 @@ import {
   withStreamlitConnection,
 } from "streamlit-component-lib";
 
+import DefaultIcon, { FURNITURE_ICON_TINTS } from "./defaultIcons.jsx";
+
 
 function App(props) {
   const args = props.args || {};
@@ -37,6 +39,14 @@ function App(props) {
   const unitFactors = { m: 100, inch: 2.54, feet: 30.48 };
   const unitFactor = unitFactors[displayUnit] || 1;
   const formatDimension = (value) => `${(Number(value) / unitFactor).toFixed(2)} ${displayUnit}`;
+  const roomColors = args.room_colors || {
+    "Living room": "#f4d8d1",
+    Bedroom: "#d7d2ef",
+    Kitchen: "#e8e1ba",
+    Bathroom: "#cfe8f7",
+    Other: "#eef2f7",
+  };
+  const appBackground = "#f7f5f2";
 
   const canvasWidth = 840;
   const canvasHeight = 640;
@@ -202,6 +212,14 @@ function App(props) {
       height={canvasHeight}
     >
       <Layer>
+        <Rect
+          x={0}
+          y={0}
+          width={canvasWidth}
+          height={canvasHeight}
+          fill={appBackground}
+          listening={false}
+        />
 
         {planRooms.map((room) => {
           const origin = roomOrigins.get(room.id);
@@ -221,7 +239,7 @@ function App(props) {
                 height={lengthPx}
                 stroke="black"
                 strokeWidth={3}
-                fill="#f8fafc"
+                fill={roomColors[room.room_type] || roomColors.Other}
               />
               <Text
                 x={6}
@@ -375,15 +393,11 @@ function App(props) {
               }
             >
 
-              {/* Furniture rectangle */}
-              <Rect
-                x={0}
-                y={0}
+              <DefaultIcon
+                type={item.furniture_type || "Other"}
                 width={displayWidthPx}
                 height={displayDepthPx}
-                fill="#dddddd"
-                stroke="black"
-                strokeWidth={2}
+                tint={FURNITURE_ICON_TINTS[item.furniture_type]}
               />
               {/* Furniture length dimension */}
               <Line
@@ -435,17 +449,6 @@ function App(props) {
                 rotation={90}
               />
 
-
-              {/* Furniture name */}
-              <Text
-                x={0}
-                y={displayDepthPx / 2 - 16}
-                width={displayWidthPx}
-                text={`${item.furniture_type || "Furniture"}: ${item.name}\n${formatDimension(item.width)} × ${formatDimension(item.depth)}`}
-                align="center"
-                fontSize={14}
-                listening={false}
-              />
 
               <Group
                 x={displayWidthPx}

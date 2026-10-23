@@ -15,6 +15,16 @@ ROOM_TYPES = {
 	"Other": "Room",
 }
 
+APP_BACKGROUND = "#f7f5f2"
+
+ROOM_COLORS = {
+	"Living room": "#f4d8d1",
+	"Bedroom": "#d7d2ef",
+	"Kitchen": "#e8e1ba",
+	"Bathroom": "#cfe8f7",
+	"Other": "#eef2f7",
+}
+
 FURNITURE_TYPES = {
 	"Sofa": (200, 90),
 	"Bed": (200, 160),
@@ -22,15 +32,9 @@ FURNITURE_TYPES = {
 	"Chair": (50, 50),
 	"Desk": (120, 60),
 	"Cabinet": (100, 45),
+	"Fridge": (90, 75),
 	"Rug": (200, 140),
 	"Other": (DEFAULT_FURNITURE_WIDTH_CM, DEFAULT_FURNITURE_DEPTH_CM),
-}
-
-BED_TYPES = {
-	"Twin": (190, 90),
-	"Double": (190, 140),
-	"Queen": (200, 160),
-	"King": (200, 200),
 }
 
 ROOM_GAP_CM = 50
@@ -39,16 +43,3 @@ MIN_ROOM_DIMENSION_CM = 50
 MAX_ROOM_DIMENSION_CM = 2000
 MIN_ROOM_HEIGHT_CM = 200
 MAX_ROOM_HEIGHT_CM = 500
-
-MIN_FURNITURE_DIMENSION_CM = 20
-MAX_FURNITURE_DIMENSION_CM = 600
-
-MIN_DOOR_WIDTH_CM = 60
-MAX_DOOR_WIDTH_CM = 366
-MIN_DOOR_HEIGHT_CM = 210
-MAX_DOOR_HEIGHT_CM = 244
-
-MIN_WINDOW_WIDTH_CM = 30
-MAX_WINDOW_WIDTH_CM = 244
-MIN_WINDOW_HEIGHT_CM = 60
-MAX_WINDOW_HEIGHT_CM = 183

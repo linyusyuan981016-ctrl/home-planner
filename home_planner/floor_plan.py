@@ -1,5 +1,6 @@
 from dataclasses import asdict
 
+from home_planner.constants import ROOM_COLORS
 from home_planner.konva_component import konva_floor_plan
 
 
@@ -23,6 +24,7 @@ def render_floor_plan(
         {
             "id": room.id,
             "label": room.label,
+            "room_type": room.room_type,
             "width": float(room.width),
             "length": float(room.length),
             "height": float(room.height),
@@ -43,6 +45,7 @@ def render_floor_plan(
         connected=home.connected,
         rooms=room_payloads,
         furniture=furniture,
+        room_colors=ROOM_COLORS,
     )
 
 
