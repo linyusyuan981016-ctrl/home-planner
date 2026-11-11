@@ -27,13 +27,17 @@ ROOM_COLORS = {
 
 FURNITURE_TYPES = {
 	"Sofa": (200, 90),
-	"Bed": (200, 160),
+	"Bed": (160, 200),
 	"Dining table": (180, 90),
+	"Round dining table": (120, 120),
 	"Chair": (50, 50),
+	"Armchair": (90, 90),
+	"Office chair": (60, 60),
 	"Desk": (120, 60),
-	"Cabinet": (100, 45),
-	"Fridge": (90, 75),
-	"Rug": (200, 140),
+	"Cabinet": (45, 100),
+	"Fridge": (75, 90),
+	"TV console": (160, 45),
+	"Rug": (200, 200),
 	"Other": (DEFAULT_FURNITURE_WIDTH_CM, DEFAULT_FURNITURE_DEPTH_CM),
 }
 

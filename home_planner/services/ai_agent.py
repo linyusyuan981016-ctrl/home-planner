@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import asdict
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -21,6 +22,7 @@ professional for building, electrical, fire-safety, or accessibility decisions.
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2")
+OLLAMA_REQUEST_TIMEOUT_SECONDS = 60
 
 
 def build_home_context(home: Home, furniture: list) -> str:
@@ -52,22 +54,23 @@ def is_ollama_available() -> bool:
         return False
 
 
-def ask_assistant(
+def stream_assistant(
     messages: list[dict[str, str]],
     *,
     home: Home,
     furniture: list,
-) -> str:
-    """Send a chat request to the local Ollama server."""
+):
+    """Stream a chat response from Ollama within the request time limit."""
+    deadline = time.monotonic() + OLLAMA_REQUEST_TIMEOUT_SECONDS
     payload = {
         "model": OLLAMA_MODEL,
-        "stream": False,
+        "stream": True,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "system", "content": build_home_context(home, furniture)},
             *messages,
         ],
-        "options": {"temperature": 0.3},
+        "options": {"temperature": 0.3, "num_ctx": 2048},
     }
     request = Request(
         f"{OLLAMA_URL}/api/chat",
@@ -76,14 +79,19 @@ def ask_assistant(
         method="POST",
     )
     try:
-        with urlopen(request, timeout=120) as response:
-            result = json.load(response)
+        with urlopen(request, timeout=OLLAMA_REQUEST_TIMEOUT_SECONDS) as response:
+            for line in response:
+                if time.monotonic() > deadline:
+                    raise TimeoutError("Ollama request exceeded its time limit")
+                if not line.strip():
+                    continue
+                chunk = json.loads(line)
+                content = chunk.get("message", {}).get("content", "")
+                if content:
+                    yield content
+                if chunk.get("done"):
+                    return
     except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Ollama request failed: {detail}") from exc
+        raise RuntimeError("Ollama not working") from exc
     except (URLError, TimeoutError) as exc:
-        raise RuntimeError(
-            "Ollama is not running. Start it with `ollama serve`."
-        ) from exc
-
-    return result.get("message", {}).get("content", "") or "I could not generate a response."
+        raise RuntimeError("Ollama not working") from exc

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+
 import streamlit as st
 
 from home_planner.constants import FURNITURE_TYPES
@@ -10,10 +13,35 @@ from home_planner.services.furniture import furniture_fits
 from home_planner.units import Unit, from_cm, to_cm
 
 ROTATIONS = (0.0, 90.0)
+ICON_DIRECTORY = Path(__file__).resolve().parents[1] / "icons"
+FURNITURE_ICON_FILES = {
+    "Sofa": "sofa.png",
+    "Bed": "bed.png",
+    "Dining table": "dining_table.png",
+    "Round dining table": "dinigtable_round.png",
+    "Chair": "dining_chair.png",
+    "Armchair": "armchair.png",
+    "Office chair": "office_chair.png",
+    "Desk": "desk.png",
+    "Cabinet": "cabinet.png",
+    "Fridge": "fridge.png",
+    "TV console": "tvconsole.png",
+    "Rug": "rug.png",
+    "Other": "armchair.png",
+}
 
 
-def _sync_furniture_name(type_key: str, name_key: str) -> None:
+def _sync_furniture_type(
+    type_key: str,
+    name_key: str,
+    width_key: str,
+    depth_key: str,
+    display_unit: Unit,
+) -> None:
     st.session_state[name_key] = st.session_state[type_key]
+    default_width, default_depth = FURNITURE_TYPES[st.session_state[type_key]]
+    st.session_state[width_key] = from_cm(default_width, display_unit)
+    st.session_state[depth_key] = from_cm(default_depth, display_unit)
 
 
 def _furniture_form(
@@ -30,6 +58,7 @@ def _furniture_form(
     name_key = f"{prefix}name"
     width_key = f"{prefix}width"
     depth_key = f"{prefix}depth"
+    rotation_key = f"{prefix}rotation"
     unit_context_key = f"{prefix}unit_context"
     context = item.id if editing else "new"
     initial_type = item.furniture_type if editing and item.furniture_type in FURNITURE_TYPES else "Other"
@@ -48,6 +77,9 @@ def _furniture_form(
             item.depth if editing else initial_depth,
             display_unit,
         )
+        st.session_state[rotation_key] = (
+            item.rotation if editing and item.rotation in ROTATIONS else ROTATIONS[0]
+        )
 
     furniture_type = st.selectbox(
         "Furniture type",
@@ -58,10 +90,9 @@ def _furniture_form(
             else furniture_type_options.index("Other") if editing else 0
         ),
         key=type_key,
-        on_change=_sync_furniture_name,
-        args=(type_key, name_key),
+        on_change=_sync_furniture_type,
+        args=(type_key, name_key, width_key, depth_key, display_unit),
     )
-    default_width, default_depth = FURNITURE_TYPES[furniture_type]
     previous_unit = st.session_state.get(unit_context_key)
     if previous_unit and previous_unit != display_unit:
         if width_key in st.session_state:
@@ -75,39 +106,49 @@ def _furniture_form(
                 display_unit,
             )
         st.session_state[unit_context_key] = display_unit
-    with st.form(form_key, clear_on_submit=not editing):
-        name = st.text_input(
-            "Furniture name",
-            key=name_key,
+    name = st.text_input("Furniture name", key=name_key)
+    rotation = st.selectbox("Rotation", ROTATIONS, key=rotation_key)
+    col1, col2 = st.columns(2)
+    with col1:
+        width = st.number_input(
+            f"Length ({display_unit})",
+            min_value=float(from_cm(1, display_unit)),
+            key=width_key,
         )
-        rotation = st.selectbox(
-            "Rotation",
-            ROTATIONS,
-            index=ROTATIONS.index(item.rotation) if editing and item.rotation in ROTATIONS else 0,
-            key=f"{prefix}rotation",
+    with col2:
+        depth = st.number_input(
+            f"Breadth ({display_unit})",
+            min_value=float(from_cm(1, display_unit)),
+            key=depth_key,
         )
-        col1, col2 = st.columns(2)
-        with col1:
-            width = st.number_input(
-                f"Length ({display_unit})",
-                min_value=float(from_cm(1, display_unit)),
-                value=float(from_cm(item.width if editing else default_width, display_unit)),
-                key=width_key,
-            )
-        with col2:
-            depth = st.number_input(
-                f"Breadth ({display_unit})",
-                min_value=float(from_cm(1, display_unit)),
-                value=float(from_cm(item.depth if editing else default_depth, display_unit)),
-                key=depth_key,
-            )
 
-        width_cm = to_cm(float(width), display_unit)
-        depth_cm = to_cm(float(depth), display_unit)
-        x = item.x if editing else 0.0
-        y = item.y if editing else 0.0
+    width_cm = to_cm(float(width), display_unit)
+    depth_cm = to_cm(float(depth), display_unit)
+    icon_file = FURNITURE_ICON_FILES[furniture_type]
+    icon_path = ICON_DIRECTORY / icon_file
+    icon_data = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+    icon_mime_type = "image/svg+xml" if icon_path.suffix == ".svg" else "image/png"
+    rotated = rotation in (90, 270)
+    preview_length = depth_cm if rotated else width_cm
+    preview_breadth = width_cm if rotated else depth_cm
+    preview_scale = min(220 / max(preview_length, 1), 180 / max(preview_breadth, 1))
+    preview_width = preview_length * preview_scale
+    preview_height = preview_breadth * preview_scale
+    st.markdown(
+        "<div style='height:188px;display:flex;align-items:center;justify-content:center'>"
+        f"<img src='data:{icon_mime_type};base64,{icon_data}' alt='{furniture_type} preview' "
+        f"style='width:{preview_width:.1f}px;height:{preview_height:.1f}px;object-fit:fill'>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
-        submitted = st.form_submit_button("Update furniture" if editing else "Add furniture", type="primary")
+    x = item.x if editing else 0.0
+    y = item.y if editing else 0.0
+    submitted = st.button(
+        "Update furniture" if editing else "Add furniture",
+        type="primary",
+        key=f"{form_key}_submit",
+    )
 
     return {
         "name": name.strip() or furniture_type,
@@ -150,6 +191,7 @@ def render_furniture_panel(selected_room: Room | None, display_unit: Unit) -> No
             item = Furniture(**values, room_id=selected_room.id)
             if furniture_fits(selected_room, item):
                 st.session_state.furniture.append(item)
+                st.session_state[f"add_furniture_context"] = None
                 message = "Furniture fits in the room!"
             else:
                 st.error("Furniture does not fit in the room!")

@@ -6,16 +6,18 @@ import streamlit as st
 
 from home_planner.constants import APP_BACKGROUND
 from home_planner.ui.floor_plan_panel import _build_floor_plan_pdf, render_floor_plan_panel
-from home_planner.ui.furniture_panel import render_furniture_panel
 from home_planner.ui.ai_panel import render_ai_panel
-from home_planner.ui.room_panel import render_room_panel
 from home_planner.ui.sidebar import render_sidebar
 from home_planner.ui.state import init_session_state
-from home_planner.units import DISPLAY_UNITS, Unit
 
 
 def run_app() -> None:
-    st.set_page_config(page_title="Home Planner", page_icon="🏠", layout="wide")
+    st.set_page_config(
+        page_title="Home Planner",
+        page_icon="🏠",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
     st.markdown(
         f"""
         <style>
@@ -25,7 +27,7 @@ def run_app() -> None:
         }}
         :root {{
             --home-toolbar-height: 60px;
-            --home-header-height: 15rem;
+            --home-header-height: 12rem;
             --home-header-offset: calc(var(--home-toolbar-height) + var(--home-header-height));
         }}
         .st-key-home_page_header {{
@@ -86,8 +88,63 @@ def run_app() -> None:
         }}
         @media (max-width: 640px) {{
             :root {{
-                --home-header-height: 19rem;
+                --home-header-height: 16rem;
             }}
+        }}
+        .st-key-ai_chat_panel {{
+            position: fixed;
+            right: 1.25rem;
+            bottom: 1.25rem;
+            z-index: 10020;
+            width: min(380px, calc(100vw - 2rem));
+            height: min(560px, calc(100vh - var(--home-toolbar-height) - 2rem));
+            max-height: calc(100vh - var(--home-toolbar-height) - 2rem);
+            min-height: 320px;
+            padding: 1rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(55, 50, 45, 0.18);
+            border-radius: 12px;
+            background: {APP_BACKGROUND};
+            box-shadow: 0 12px 36px rgba(30, 27, 24, 0.2);
+        }}
+        .st-key-ai_chat_panel [data-testid="stLayoutWrapper"]:has(.st-key-ai_chat_history) {{
+            flex: 1 1 0;
+            height: auto;
+            min-height: 0;
+        }}
+        .st-key-ai_chat_history {{
+            height: 100%;
+            min-height: 0;
+            overflow-y: auto;
+        }}
+        .st-key-ai_chat_panel [data-testid="stLayoutWrapper"]:has(.st-key-FormSubmitter-ai_chat_form-Send) {{
+            flex: 0 0 auto;
+            margin-top: auto;
+        }}
+        .st-key-ai_chat_launcher {{
+            position: fixed;
+            right: 1.5rem;
+            bottom: 1.5rem;
+            z-index: 10020;
+        }}
+        .st-key-ai_chat_launcher button {{
+            width: 3.5rem;
+            height: 3.5rem;
+            padding: 0;
+            border-radius: 50%;
+            border: 0;
+            background: #3f6f65;
+            color: white;
+            font-size: 1.8rem;
+            box-shadow: 0 6px 20px rgba(30, 27, 24, 0.22);
+        }}
+        .st-key-ai_chat_panel [data-testid="stHorizontalBlock"] {{
+            align-items: center;
+            padding-left: 1.25rem;
+            box-sizing: border-box;
         }}
         </style>
         """,
@@ -97,7 +154,7 @@ def run_app() -> None:
     init_session_state()
     home = st.session_state.home
 
-    display_unit: Unit = st.session_state.get("display_unit", DISPLAY_UNITS[0])
+    display_unit = render_sidebar(home)
     pdf_bytes = _build_floor_plan_pdf(home, display_unit, st.session_state.furniture)
     with st.container(key="home_page_header"):
         header_left, header_right = st.columns([5, 1], vertical_alignment="center")
@@ -122,20 +179,10 @@ def run_app() -> None:
                 use_container_width=True,
             )
 
-    display_unit = st.selectbox("Display unit", DISPLAY_UNITS, key="display_unit")
+    render_floor_plan_panel(
+        home,
+        selected_room_id=st.session_state.selected_room_id,
+        display_unit=display_unit,
+    )
 
-    render_sidebar(home)
     render_ai_panel(home, st.session_state.furniture)
-
-    left, right = st.columns([1, 2], gap="large")
-
-    with left:
-        selected_room = render_room_panel(home, display_unit)
-        render_furniture_panel(selected_room, display_unit)
-
-    with right:
-        render_floor_plan_panel(
-            home,
-            selected_room_id=st.session_state.selected_room_id,
-            display_unit=display_unit,
-        )

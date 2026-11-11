@@ -12,7 +12,6 @@ App.css
 *.mdc
 __init__.cpython-314.pyc
 *.svg
-*.png
 *.json
 ReadMe.md
 index.html

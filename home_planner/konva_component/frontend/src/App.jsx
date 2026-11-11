@@ -46,12 +46,11 @@ function App(props) {
     Bathroom: "#cfe8f7",
     Other: "#eef2f7",
   };
-  const appBackground = "#f7f5f2";
-
-  const canvasWidth = 840;
+  const [canvasWidth, setCanvasWidth] = useState(() => Math.max(320, window.innerWidth));
   const canvasHeight = 640;
-  const maxWidth = 700;
-  const maxHeight = 500;
+  const canvasPadding = 56;
+  const maxWidth = Math.max(240, canvasWidth - canvasPadding * 2);
+  const maxHeight = canvasHeight - canvasPadding * 2;
   const [planRooms, setPlanRooms] = useState(rooms);
   const minRoomX = Math.min(...planRooms.map((room) => Number(room.x)));
   const minRoomY = Math.min(...planRooms.map((room) => Number(room.y)));
@@ -64,8 +63,8 @@ function App(props) {
   const scaleY = maxHeight / planLength;
   const scale = Math.min(scaleX, scaleY);
 
-  const planX = 80 - minRoomX * scale;
-  const planY = 60 - minRoomY * scale;
+  const planX = (canvasWidth - planWidth * scale) / 2 - minRoomX * scale;
+  const planY = (canvasHeight - planLength * scale) / 2 - minRoomY * scale;
   const roomX = planX;
   const roomY = planY;
   const storageKey = `home-planner-furniture-${roomId}`;
@@ -88,6 +87,15 @@ function App(props) {
     setPlanRooms(JSON.parse(roomsJson));
   }, [roomsJson]);
 
+  useEffect(() => {
+    function updateCanvasWidth() {
+      setCanvasWidth(Math.max(320, window.innerWidth));
+    }
+
+    window.addEventListener("resize", updateCanvasWidth);
+    return () => window.removeEventListener("resize", updateCanvasWidth);
+  }, []);
+
 
   // Tell Streamlit how tall the component should be.
   useEffect(() => {
@@ -96,7 +104,7 @@ function App(props) {
 
 
   function handleDragEnd(itemId, e) {
-    const group = e.target;
+    const group = e.currentTarget;
     const item = items.find((candidate) => candidate.id === itemId);
     const origin = roomOrigins.get(item?.room_id) || { x: roomX, y: roomY };
 
@@ -186,11 +194,82 @@ function App(props) {
 
   function handleRoomDragEnd(room, event) {
     event.cancelBubble = true;
-    const handle = event.target;
+    const group = event.currentTarget;
     const origin = roomOrigins.get(room.id);
-    const absolutePosition = handle.getAbsolutePosition();
-    const nextX = Number(room.x) + (absolutePosition.x - origin.x - 6) / scale;
-    const nextY = Number(room.y) + (absolutePosition.y - origin.y - 6) / scale;
+    const absolutePosition = group.getAbsolutePosition();
+    const desiredX = Number(room.x) + (absolutePosition.x - origin.x) / scale;
+    const desiredY = Number(room.y) + (absolutePosition.y - origin.y) / scale;
+    const others = planRooms.filter((entry) => entry.id !== room.id);
+    const overlapsOrTouches = others.some((other) => {
+      const overlapX = Math.min(desiredX + Number(room.width), Number(other.x) + Number(other.width))
+        - Math.max(desiredX, Number(other.x));
+      const overlapY = Math.min(desiredY + Number(room.length), Number(other.y) + Number(other.length))
+        - Math.max(desiredY, Number(other.y));
+      return (overlapX > 0 && overlapY > 0)
+        || (Math.abs(desiredX + Number(room.width) - Number(other.x)) < 0.1 && overlapY > 0)
+        || (Math.abs(desiredX - Number(other.x) - Number(other.width)) < 0.1 && overlapY > 0)
+        || (Math.abs(desiredY + Number(room.length) - Number(other.y)) < 0.1 && overlapX > 0)
+        || (Math.abs(desiredY - Number(other.y) - Number(other.length)) < 0.1 && overlapX > 0);
+    });
+    let nextX = desiredX;
+    let nextY = desiredY;
+
+    if (!overlapsOrTouches && others.length > 0) {
+      const candidates = [];
+      const addCandidate = (x, y) => {
+        const screenX = planX + x * scale;
+        const screenY = planY + y * scale;
+        const roomWidthPx = Number(room.width) * scale;
+        const roomLengthPx = Number(room.length) * scale;
+        if (
+          screenX >= 0 && screenY >= 0
+          && screenX + roomWidthPx <= canvasWidth
+          && screenY + roomLengthPx <= canvasHeight
+        ) {
+          candidates.push({
+            x,
+            y,
+            distance: Math.hypot(x - desiredX, y - desiredY),
+          });
+        }
+      };
+
+      for (const other of others) {
+        const otherX = Number(other.x);
+        const otherY = Number(other.y);
+        const otherWidth = Number(other.width);
+        const otherLength = Number(other.length);
+        const minimumOverlap = 1;
+        const verticalMin = otherY - Number(room.length) + minimumOverlap;
+        const verticalMax = otherY + otherLength - minimumOverlap;
+        const horizontalMin = otherX - Number(room.width) + minimumOverlap;
+        const horizontalMax = otherX + otherWidth - minimumOverlap;
+
+        addCandidate(
+          otherX + otherWidth,
+          Math.max(verticalMin, Math.min(desiredY, verticalMax)),
+        );
+        addCandidate(
+          otherX - Number(room.width),
+          Math.max(verticalMin, Math.min(desiredY, verticalMax)),
+        );
+        addCandidate(
+          Math.max(horizontalMin, Math.min(desiredX, horizontalMax)),
+          otherY + otherLength,
+        );
+        addCandidate(
+          Math.max(horizontalMin, Math.min(desiredX, horizontalMax)),
+          otherY - Number(room.length),
+        );
+      }
+
+      candidates.sort((first, second) => first.distance - second.distance);
+      if (candidates.length > 0) {
+        ({ x: nextX, y: nextY } = candidates[0]);
+      }
+    }
+
+    group.position({ x: planX + nextX * scale, y: planY + nextY * scale });
     const updatedRooms = planRooms.map((entry) => (
       entry.id === room.id ? { ...entry, x: nextX, y: nextY } : entry
     ));
@@ -212,15 +291,6 @@ function App(props) {
       height={canvasHeight}
     >
       <Layer>
-        <Rect
-          x={0}
-          y={0}
-          width={canvasWidth}
-          height={canvasHeight}
-          fill={appBackground}
-          listening={false}
-        />
-
         {planRooms.map((room) => {
           const origin = roomOrigins.get(room.id);
           const widthPx = Number(room.width) * scale;
@@ -231,6 +301,12 @@ function App(props) {
                 key={`${room.id}:${room.x}:${room.y}`}
                 x={origin.x}
                 y={origin.y}
+                draggable={Boolean(args.connected)}
+                dragBoundFunc={(position) => ({
+                  x: Math.max(0, Math.min(position.x, canvasWidth - widthPx)),
+                  y: Math.max(0, Math.min(position.y, canvasHeight - lengthPx)),
+                })}
+                onDragEnd={(event) => handleRoomDragEnd(room, event)}
               >
               <Rect
                 x={0}
@@ -241,11 +317,46 @@ function App(props) {
                 strokeWidth={3}
                 fill={roomColors[room.room_type] || roomColors.Other}
               />
+              <Line
+                points={[0, -6, widthPx, -6]}
+                stroke="#475569"
+                strokeWidth={1}
+                listening={false}
+              />
+              <Text
+                x={widthPx / 2 - 60}
+                y={-24}
+                width={120}
+                height={18}
+                align="center"
+                text={formatDimension(room.width)}
+                fontSize={12}
+                fill="#111827"
+                listening={false}
+              />
+              <Line
+                points={[widthPx + 6, 0, widthPx + 6, lengthPx]}
+                stroke="#475569"
+                strokeWidth={1}
+                listening={false}
+              />
+              <Text
+                x={widthPx + 22}
+                y={lengthPx / 2 - 60}
+                width={120}
+                height={18}
+                align="center"
+                text={formatDimension(room.length)}
+                fontSize={12}
+                fill="#111827"
+                rotation={90}
+                listening={false}
+              />
               <Text
                 x={6}
                 y={6}
                 width={widthPx - 12}
-                text={`${room.label}\n${formatDimension(room.width)} × ${formatDimension(room.length)}`}
+                text={room.label}
                 fontSize={14}
                 fill="#111827"
                 listening={false}
@@ -253,20 +364,13 @@ function App(props) {
               {args.connected && (
                 <Text
                   x={6}
-                  y={6}
+                  y={38}
                   width={Math.min(widthPx - 12, 90)}
                   height={22}
-                  text="Move room"
+                  text="Drag room"
                   fontSize={11}
                   fill="#475569"
-                  draggable
-                  dragBoundFunc={(position) => ({
-                    x: Math.max(origin.x + 6, Math.min(position.x, origin.x + widthPx - 96)),
-                    y: Math.max(origin.y + 6, Math.min(position.y, origin.y + lengthPx - 28)),
-                  })}
-                  onMouseDown={(event) => { event.cancelBubble = true; }}
-                  onTouchStart={(event) => { event.cancelBubble = true; }}
-                  onDragEnd={(event) => handleRoomDragEnd(room, event)}
+                  listening={false}
                 />
               )}
               {room.openings.map((opening) => {
@@ -393,19 +497,27 @@ function App(props) {
               }
             >
 
-              <DefaultIcon
-                type={item.furniture_type || "Other"}
-                width={displayWidthPx}
-                height={displayDepthPx}
-                tint={FURNITURE_ICON_TINTS[item.furniture_type]}
-              />
+              <Group
+                x={displayWidthPx / 2}
+                y={displayDepthPx / 2}
+                rotation={rotation}
+              >
+                <DefaultIcon
+                  type={item.furniture_type || "Other"}
+                  x={-widthPx / 2}
+                  y={-depthPx / 2}
+                  width={widthPx}
+                  height={depthPx}
+                  tint={FURNITURE_ICON_TINTS[item.furniture_type]}
+                />
+              </Group>
               {/* Furniture length dimension */}
               <Line
                 points={[
                   0,
-                  -12,
+                  -2,
                   displayWidthPx,
-                  -12
+                  -2
                 ]}
                 stroke="black"
                 strokeWidth={1}
@@ -413,7 +525,7 @@ function App(props) {
 
               <Text
                 x={0}
-                y={-30}
+                y={-18}
                 width={displayWidthPx}
                 align="center"
                 text={formatDimension(
@@ -428,9 +540,9 @@ function App(props) {
               {/* Furniture breadth dimension */}
               <Line
                 points={[
-                  displayWidthPx + 12,
+                  displayWidthPx + 2,
                   0,
-                  displayWidthPx + 12,
+                  displayWidthPx + 2,
                   displayDepthPx
                 ]}
                 stroke="black"
@@ -438,7 +550,7 @@ function App(props) {
               />
 
               <Text
-                x={displayWidthPx + 18}
+                x={displayWidthPx + 4}
                 y={displayDepthPx / 2}
                 text={formatDimension(
                   rotation === 90 || rotation === 270

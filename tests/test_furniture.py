@@ -2,6 +2,7 @@
 
 import unittest
 
+from home_planner.constants import FURNITURE_TYPES
 from home_planner.models import Furniture, Room
 from home_planner.services.furniture import furniture_fits
 
@@ -11,6 +12,22 @@ def _living_room() -> Room:
 
 
 class TestFurniture(unittest.TestCase):
+    def test_default_dimensions_follow_furniture_icon_orientation(self):
+        for furniture_type in ("Bed", "Cabinet", "Fridge"):
+            with self.subTest(furniture_type=furniture_type):
+                width, depth = FURNITURE_TYPES[furniture_type]
+                self.assertGreater(depth, width)
+
+        for furniture_type in ("Sofa", "Dining table", "Desk", "Other"):
+            with self.subTest(furniture_type=furniture_type):
+                width, depth = FURNITURE_TYPES[furniture_type]
+                self.assertGreater(width, depth)
+
+        for furniture_type in ("Chair", "Rug"):
+            with self.subTest(furniture_type=furniture_type):
+                width, depth = FURNITURE_TYPES[furniture_type]
+                self.assertEqual(width, depth)
+
     def test_furniture_fits(self):
         room = _living_room()
         item = Furniture(name="Sofa", width=200, depth=90, x=20, y=20)
