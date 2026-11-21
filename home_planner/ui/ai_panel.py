@@ -32,7 +32,7 @@ def render_ai_panel(home: Home, furniture: list) -> None:
                 st.rerun()
 
         if not ollama_available:
-            st.caption("Start Ollama locally to enable the assistant.")
+            st.caption("AI assistant unavailable: its Ollama server can't be reached.")
 
         with st.container(key="ai_chat_history", height=350, border=False):
             for message in st.session_state.ai_messages:

@@ -15,6 +15,18 @@ streamlit run app.py
 
 Open the URL shown in the terminal (default: http://localhost:8501).
 
+## Deploy to Streamlit Community Cloud
+
+1. Push this repository to GitHub. In [Streamlit Community Cloud](https://share.streamlit.io/), sign in with GitHub and select **Create app**.
+2. Select this repository, the branch to deploy (usually `main`), and `app.py` as the **Main file path**.
+3. Select **Deploy**. Streamlit installs the packages from `requirements.txt` and provides a public app URL.
+
+The floor-planning features work in the hosted app. The optional AI assistant
+uses Ollama, which runs on your own computer during local development; a hosted
+app cannot reach that local server, so the assistant remains unavailable unless
+you configure a separately hosted, network-accessible Ollama server using
+`OLLAMA_URL`.
+
 ## Local AI assistant setup
 
 The optional AI Space Assistant uses Ollama locally. No OpenAI account, API
