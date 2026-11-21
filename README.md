@@ -75,6 +75,7 @@ home-planner/
 | Doc | Purpose |
 |-----|---------|
 | [AGENTS.md](./AGENTS.md) | AI agent onboarding |
+| [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md) | Current features, roadmap, user flow, architecture, milestones, and validation |
 | [docs/PRODUCT.md](./docs/PRODUCT.md) | Vision, philosophy, target users |
 | [docs/FEATURES.md](./docs/FEATURES.md) | Feature breakdown and build order |
 | [docs/features/01-dimensions-to-map.md](./docs/features/01-dimensions-to-map.md) | Feature 1 spec |
